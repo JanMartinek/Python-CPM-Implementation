@@ -1,0 +1,90 @@
+[project]
+name = "cpm-python"
+version = "1.0.0"
+description = "Chain Provenance Model (CPM) - Python Implementation based on W3C PROV-DM"
+authors = [
+    {name = "CPM Implementation Team"}
+]
+license = {text = "MIT"}
+readme = "README.md"
+requires-python = ">=3.8"
+keywords = ["provenance", "cpm", "prov-dm", "w3c", "chain-provenance-model"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "Topic :: Scientific/Engineering :: Information Analysis",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+
+dependencies = [
+    "prov>=2.0.0",
+    "networkx>=2.5",
+    "python-dateutil>=2.8.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0.0",
+    "pytest-cov>=4.0.0",
+]
+visualization = [
+    "matplotlib>=3.3.0",
+]
+validation = [
+    "jsonschema>=4.0.0",
+]
+xml = [
+    "lxml>=4.6.0",
+]
+all = [
+    "matplotlib>=3.3.0",
+    "jsonschema>=4.0.0",
+    "lxml>=4.6.0",
+    "pytest>=8.0.0",
+    "pytest-cov>=4.0.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/your-repo/python-implementation-of-the-cpm"
+Documentation = "https://github.com/your-repo/python-implementation-of-the-cpm"
+Repository = "https://github.com/your-repo/python-implementation-of-the-cpm"
+Issues = "https://github.com/your-repo/python-implementation-of-the-cpm/issues"
+
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = "-v --tb=short"
+
+[tool.coverage.run]
+source = ["src"]
+omit = ["*/tests/*", "*/test_*.py"]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+]

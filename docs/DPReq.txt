@@ -1,0 +1,1955 @@
+FACULTY OF INFORMATICS
+Reference Implementation
+of the Common Provenance Model
+Master’s Thesis
+BC. DÁVID LAUROVIČ
+Brno, Spring 2025
+FACULTY OF INFORMATICS
+Reference Implementation
+of the Common Provenance Model
+Master’s Thesis
+BC. DÁVID LAUROVIČ
+Advisor: RNDr. Rudolf Wittner
+Department of Computer Systems and Communications
+Brno, Spring 2025
+Declaration
+Hereby I declare that this thesis is my original authorial work, which
+I have worked out on my own. All sources, references, and literature
+used or excerpted during elaboration of this work are properly cited
+and listed in complete reference to the due source.
+During the preparation of this thesis, I used ChatGPT to improve
+my writing style. I declare that I used this tool in accordance with the
+principles of academic integrity. I checked the content and took full
+responsibility for it.
+Bc. Dávid Laurovič
+Advisor: RNDr. Rudolf Wittner
+iii
+Acknowledgements
+I sincerely thank my supervisor, RNDr. Rudolf Wittner, for his valuable
+advice and guidance, which greatly contributed to the completion of
+my thesis.
+I would also like to extend my gratitude to Martin Mojžiš for his
+patience and prompt assistance in identifying errors related to the
+storage of provenance documents generated in this work.
+I am also deeply grateful to my friends and family for their constant
+support, encouragement, and understanding even in the worst of
+times.
+iv
+Abstract
+Provenance refers to information about the origins of objects or data,
+including how, by whom, and through what processes it was produced.
+The Common Provenance Model (CPM) is a standard for representing
+provenance information, allowing the distribution of this information
+among organisations.
+The main focus of this work is the implementation of a library for
+the creation and manipulation of individual provenance documents
+in the CPM form, developed as an extension of an existing library
+for working with provenance, ProvToolBox. The library represents
+the individual provenance documents in-memory as a traversable
+graph, enables their full editability and offers numerous quality-of-life
+functionalities for working with CPM. Furthermore, the library allows
+the creation of the provenance documents in the CPM form using a
+templating mechanism.
+Additionally, the library is demonstrated using two datasets provided by Masaryk Memorial Cancer Insitute (MMCI) and European
+Marine Biology Resource Centre (EMBRC), respectively.
+Keywords
+provenance, W3C PROV, Common Provenance Model, PROV Template, ProvToolBox
+v
+Contents
+Introduction 1
+1 Background and Fundamental Concepts 2
+1.1 The PROV Data Model . . . . . . . . . . . . . . . . . . . 2
+1.1.1 Core structures . . . . . . . . . . . . . . . . . . . 2
+1.1.2 Identifiers . . . . . . . . . . . . . . . . . . . . . . 4
+1.1.3 Attributes . . . . . . . . . . . . . . . . . . . . . . 4
+1.1.4 Extended structures . . . . . . . . . . . . . . . . 4
+1.1.5 Constraints . . . . . . . . . . . . . . . . . . . . . 6
+1.2 The PROV Data Model Representations . . . . . . . . . 7
+1.2.1 The Provenance Notation . . . . . . . . . . . . . 7
+1.2.2 JSON-LD . . . . . . . . . . . . . . . . . . . . . . . 8
+1.3 The PROV Template . . . . . . . . . . . . . . . . . . . . . 9
+1.4 Common Provenance Model . . . . . . . . . . . . . . . . 10
+1.4.1 Subtypes . . . . . . . . . . . . . . . . . . . . . . . 11
+1.4.2 Versioning . . . . . . . . . . . . . . . . . . . . . . 13
+1.5 ProvToolBox . . . . . . . . . . . . . . . . . . . . . . . . . 14
+1.5.1 Model Design . . . . . . . . . . . . . . . . . . . . 15
+1.5.2 Vanilla Implementation . . . . . . . . . . . . . . 15
+1.5.3 Selected supporting modules . . . . . . . . . . . 16
+1.6 The Python PROV Package . . . . . . . . . . . . . . . . . 16
+2 Requirements and Design Considerations 18
+2.1 CPM reference implementation requirements . . . . . . 18
+2.2 Analysis of approaches . . . . . . . . . . . . . . . . . . . 19
+2.3 Design of the extension . . . . . . . . . . . . . . . . . . . 20
+2.3.1 Graph representation . . . . . . . . . . . . . . . . 20
+2.3.2 CPM Generation Process . . . . . . . . . . . . . . 21
+2.3.3 Traversal Information Template JSON . . . . . . 23
+3 Implementation 25
+3.1 Structure of the Reference Implementation . . . . . . . 25
+3.1.1 Cpm-core module . . . . . . . . . . . . . . . . . 25
+3.1.2 Cpm-template module . . . . . . . . . . . . . . . 26
+3.2 CpmDocument implementation . . . . . . . . . . . . . . 26
+3.2.1 Node Creation and Mapping . . . . . . . . . . . 28
+vi
+3.2.2 Edge Creation and Mapping . . . . . . . . . . . 28
+3.2.3 Membership Mapping . . . . . . . . . . . . . . . 29
+3.2.4 Influence Mapping . . . . . . . . . . . . . . . . . 29
+3.3 Traversal Information Algorithm . . . . . . . . . . . . . 30
+3.4 CpmDocument component implementations . . . . . . 32
+3.4.1 Merged Implementation . . . . . . . . . . . . . . 32
+3.4.2 Divided Implementation . . . . . . . . . . . . . . 33
+3.5 Deserialisation and serialisation of the template . . . . 33
+3.5.1 Mapping of template to ProvToolBox objects . . 34
+4 Application of the Library to MMCI Data 36
+4.1 Data Description and Provenance Modelling . . . . . . 36
+4.1.1 Acquisition bundle . . . . . . . . . . . . . . . . . 37
+4.1.2 Storage bundle . . . . . . . . . . . . . . . . . . . 38
+4.2 Comparison of template mechanisms . . . . . . . . . . . 39
+4.2.1 The PROV template mechanism . . . . . . . . . 39
+4.2.2 The CPM template mechanism . . . . . . . . . . 40
+5 Application of the Library to EMBRC Data 41
+5.1 Description of data . . . . . . . . . . . . . . . . . . . . . 41
+5.1.1 Dataset 1 - Log Sheets . . . . . . . . . . . . . . . 41
+5.1.2 Dataset 2 - FlowCam images . . . . . . . . . . . 42
+5.1.3 Dataset 3 - FlowCam results . . . . . . . . . . . . 42
+5.1.4 Dataset 4 - The DNA dataset . . . . . . . . . . . 42
+5.2 Transformation of the provenance information . . . . . 43
+5.3 CPM Modelling . . . . . . . . . . . . . . . . . . . . . . . 45
+5.3.1 Sampling bundle . . . . . . . . . . . . . . . . . . 45
+5.3.2 Processing bundle . . . . . . . . . . . . . . . . . 47
+5.3.3 Species identification bundle . . . . . . . . . . . 47
+5.3.4 DNA sequencing bundle . . . . . . . . . . . . . . 48
+5.4 Persistence of the documents . . . . . . . . . . . . . . . 49
+5.4.1 Incompatibilities between ProvToolBox and PROV
+Python . . . . . . . . . . . . . . . . . . . . . . . . 50
+5.4.2 Requirements by the Provenance Storage service 50
+Conclusion 53
+Bibliography 55
+vii
+A Organization of the electronic archive 58
+B Mapping of requirements to CpmDocument functionalities 59
+B.1 Requirement 3 - Mutability . . . . . . . . . . . . . . . . 59
+B.2 Requirement 6.1 - Retrieve elements . . . . . . . . . . . 62
+B.3 Requirement 6.2 - Retrieve Relation . . . . . . . . . . . . 62
+B.4 Requirement 6.3 - Retrieve main activity . . . . . . . . . 63
+B.5 Requirement 6.4 and 6.5 - Retrieve connectors . . . . . . 63
+B.6 Requirements 6.6 and 6.7 - Retrieve preceding and successive connectors . . . . . . . . . . . . . . . . . . . . . . 64
+B.7 Requirements 6.8 and 6.9 - Retrieve TI and DS as a
+traversable sub-graph . . . . . . . . . . . . . . . . . . . . 65
+B.8 Requirement 6.10 - Retrieve cross-part relations . . . . . 66
+B.9 Requirement 6.11 - Recreate CPM Bundle from combination of all parts . . . . . . . . . . . . . . . . . . . . . . 67
+viii
+List of Figures
+1.1 Core Structures of the PROV Data Model . . . . . . . . . . 3
+1.2 Traversal Information part of a CPM bundle . . . . . . . . 12
+1.3 CPM bundle with domain-specific provenance . . . . . . 13
+1.4 Example of Meta-Provenance bundle . . . . . . . . . . . . 14
+2.1 Class Diagram for Graph Representation . . . . . . . . . . 21
+2.2 CPM Templating Process . . . . . . . . . . . . . . . . . . . 22
+4.1 Provenance information of sample acquisition . . . . . . . 37
+4.2 Provenance information of sample storage . . . . . . . . . 38
+5.1 CPM provenance information of Dataset 1 . . . . . . . . . 46
+5.2 CPM provenance information of Dataset 2 . . . . . . . . . 47
+5.3 CPM provenance information of Dataset 3 . . . . . . . . . 48
+5.4 CPM provenance information of Dataset 4 . . . . . . . . . 49
+ix
+Introduction
+In an evermore interconnected world, with printed documents on the
+decline for decades, a need arises to store and share information about
+research objects, such as datasets, digitally between organisations in a
+common, secure, and reliable way.
+One approach to capturing such data is by using the concept of
+provenance, which is the information about history of objects or data.
+For the purpose of representing this information, the PROV Data
+Model [1] has been specified.
+However, this model by itself does not specifically support the distribution of this information between multiple facilities. Therefore, a
+Common Provenance Framework is currently under development [2],
+serving as a basis for the ISO 23494 standard. The framework specifies
+a Common Provenance Model (CPM), which is an extension of the
+PROV Data Model. This thesis serves as a reference implementation
+of the current state of this model through the development of a new
+library. The main concerns of the library include the generation of
+provenance documents using a templating mechanism, manipulation
+of these documents and their traversability in-memory.
+Chapter 1 provides an overview of all relevant background concepts alongside descriptions of two of the most popular provenance
+libraries. Chapter 2 describes in detail the requirements placed on
+the reference implementation and its design. Chapter 3 provides the
+structure of the library and implementation details.
+Chapter 4 describes the application of the library on data provided
+by Masaryk Memorial Cancer Insitute (MMCI) and a comparison of
+templating mechanisms used previously and the mechanism developed in this work. Chapter 5 describes the application of the library on
+provenance metadata regarding datasets provided by the European
+Marine Biology Resource Centre (EMBRC).
+1
+1 Background and Fundamental Concepts
+In this chapter, the basic concepts relevant to the work are discussed.
+First, the PROV Data Model itself, its different representations, and a
+provenance generation mechanism using templates will be described.
+Then, the extension, the Common Provenance Model, will be described, followed by a brief description of existing libraries for working
+with provenance, ProvToolBox and the Python PROV package.
+1.1 The PROV Data Model
+Provenance, as specified by W3C [1], is information about activities
+and entities that influence an object or a piece of information. The
+PROV Data Model [1] is a generic data model that is used to describe
+the provenance of objects and information in a standardized form that
+can be exchanged between different systems.
+An instance of the model, more specifically a package of PROV
+structures and namespaces, is referred to as a document, as defined in
+the PROV Notation specification [3], which is one of the representations of the PROV Data Model. The concept of a document is not part of
+the PROV Data Model specification [1], but as it is also present in the
+definitions of other formats, it will henceforth be used in this work.
+1.1.1 Core structures
+The core structures of the PROV Data Model [1] are of two categories:
+types and relations between them. The types are described as follows:
+• Entity - A physical, digital or other kind of an object.
+• Activity - A process that occurs over time and works with
+entities.
+• Agent - An organization, individual, or other agent responsible
+for activities or existence of entities.
+Every relation has a source and a target. The specific core relations
+are described below, with the source type listed first and the target
+type second.
+2
+1. Background and Fundamental Concepts
+• Usage - An Activity used an Entity.
+• Generation - An Entity was generated by an Activity.
+• Derivation - An Entity was derived from another Entity.
+• Association - An Activity was associated with an Agent.
+• Attribution - An Entity was attributed to an Agent.
+• Communication - An Activity was informed by another Activity.
+• Delegation - An Agent acted on behalf of another Agent.
+The PROV data model can be represented visually in the form of a
+directed graph, where the type instances are nodes and the relations
+are edges. The entities are graphically represented as ovals, the activities are represented as rectangles, and the agents are represented as
+pentagons1
+. The relations are represented as directed edges pointed
+at the target of the relation.
+Figure 1.1: Core Structures of the PROV Data Model, inspired by [1]
+1. https://www.w3.org/2011/prov/wiki/Diagrams
+3
+1. Background and Fundamental Concepts
+1.1.2 Identifiers
+Identifiers in the PROV Data Model are references used to distinguish
+different structures. The identifiers are in the form of qualified names.
+A qualified name consists of two parts: a namespace and a local part
+denoting the actual identifier. A namespace, which is an IRI, can be
+substituted by a prefix, which is declared at the start of a document. If
+no prefix or namespace is part of an identifier, the default namespace is
+used, also defined at the start of a document. Identifiers are mandatory
+for types, and optional for relations, with the exception of Alternate
+and Specialization relations, defined in Chapter 1.1.4, which do not
+have an identifier.
+1.1.3 Attributes
+Every structure in the PROV Data Model can have attributes, with
+the exception of Alternate and Specialization relations. An attribute
+consists of a qualified name that denotes the type of the attribute and
+a value. A structure can have multiple attribute values denoted by the
+same qualified name. A value can be a qualified name or any RDFcompatible data type, defined in the RDF specification [4]. The PROV
+Data Model contains multiple predefined attributes, some of which are
+allowed only in certain structures. These attributes are: prov:label,
+prov:location, prov:role, prov:type and prov:value.
+1.1.4 Extended structures
+In addition to the core structures, the PROV Data Model specification [1], defines several relations and sub-types that are considered
+extended structures.
+Expanded relations
+The specific expanded relations are described as follows, with the
+source type listed first, and the target type second:
+• Start - An Activity was started by an Entity.
+• End - An Activity was ended by an Entity.
+4
+1. Background and Fundamental Concepts
+• Invalidation - An Entity was invalidated by an Activity.
+• Alternate - An Entity is an alternate of another Entity.
+• Specialization - An Entity is a specialization of another Entity.
+The expanded structures also define a super-type for all relations,
+described as:
+• Influence - An influencee was influenced by an influencer.
+Every relation, whether part of the core structures or the extended
+structures, is also considered an influence. It is recommended by
+W3C [1] to use specific relations between types instead of the generic
+influence.
+Subtypes
+Sub-typing can be applied to core structures, in order to define their
+specific characteristics more clearly. The subtype is denoted as a prov:
+type attribute with a specific type. For Entities, these subtypes exists:
+• Plan - An Entity that represents a set of actions.
+• Bundle - See Bundles for details.
+• Collection and EmptyCollection - See Collections for details.
+For Activities, these subtypes exists:
+• Revision - An Entity was a revision of another Entity, subtype
+of Derivation.
+• Quotation - An Entity was quoted from another Entity, subtype
+of Derivation.
+• PrimarySource - An Entity had a primary source in other Entity,
+subtype of Derivation.
+5
+1. Background and Fundamental Concepts
+For Agents, these subtypes exists:
+• SoftwareAgent - An Agent that is a software program, application, etc.
+• Organisation - An Agent that is a company, institution, facility,
+etc.
+• Person – An Agent that is an individual human.
+Bundles
+A special type of extended structure is a Bundle, which is a subtype
+of entity. It is a named collection of structures that allows grouping
+them under a single identifier. Bundles may include their own namespace declaration, which extends the declaration at the beginning of a
+document. Nesting of bundles within other bundles is not allowed.
+Collections
+Another special type of extended structure worth describing separately
+is a Collection. Collection is a subtype of entity, and consists of other
+entities. If an Entity is a collection, but does not have any members, the
+subtype of the entity can be EmptyCollection. The relation between
+collection and its contents is an expanded n-ary relation, defined as:
+• Membership - An Entity had entities as members.
+1.1.5 Constraints
+The PROV Constrains, specified by W3C [5], are a set of rules to
+ensure consistency and validity of a model instance. Their purpose is
+to mitigate errors and enforce logical relations in PROV documents.
+Some important constraints include:
+• Order constraints: All structures must follow logical time order,
+for example an end cannot occur before a start.
+• Type constraints: Structures must be of correct types, for example relations must be between types of the correct type.
+6
+1. Background and Fundamental Concepts
+• Key and Uniqueness constraints: Constraints 22 and 23 define
+that an identifier is a key for a type or a relation, but this does
+not mean that the same identifiers cannot be used in multiple
+structures. According to Constraint 53, no two relations can
+share the same identifier unless they are of the same type of
+relation. Constraint 54 further specifies that the identifiers of
+types cannot be used as identifiers for relations. However, as per
+Constraint 55, two types can share the same identifier, with the
+only exception being that an entity and an activity cannot share
+an identifier. If two types or relations with the same identifier
+are of the same type of structure, a merging algorithm is applied
+to decide whether the structure is valid. The merging can fail if
+uniqueness constraints, such as the uniqueness of a start time
+in an activity, are violated.
+A normal form is the set of provenance statements resulting from applying all definitions, inferences, and uniqueness constraints [5]. A document
+is considered valid if all constraints are satisfied on the normal form.
+1.2 The PROV Data Model Representations
+The PROV Data Model can be represented in various data formats,
+including XML [6], JSON [7], JSON-LD [8], in addition to its own
+format - the Provenance Notation (PROV-N).
+1.2.1 The Provenance Notation
+The PROV-N data format, as specified by W3C [3], is aimed to be a
+human readable representation of the PROV data model. Each document begins with a declaration of namespaces, specifying the prefix
+and IRI for each using the line:
+prefix ex <http://example.org/>
+The document then contains structures in the form of
+structure(id1, ..., idn, [a1 = ’v1’ %% t1, ...])
+where id1, ..., idn are the mandatory and optional identifiers
+for the structure. Every structure has a prescribed order of the mandatory and optional identifiers. The absence of an optional identifier
+7
+1. Background and Fundamental Concepts
+can be denoted with - sign. The a1 =’v1’ %% t1, ... denotes the
+attributes of the structure in the form of qualified names, their values
+and the types of those values, respectively. If the value is a qualified
+name, than the type can be omitted. If a structure does not contain
+any attributes, the attribute list can be omitted altogether.
+Bundles are in the form of
+bundle ex:identifier
+prefix ex <http://example.org/>
+...
+structure(id1, ..., idn, [a1 = ’v1’ %% t1, ...])
+...
+endbundle
+with namespace declarations first, then a list of structures following.
+1.2.2 JSON-LD
+JSON for Linked Data, specified by W3C [9], is a format for integration
+with semantic web technologies, representing interconnected data
+through the concept of a context and IDs. By using IDs, other objects,
+not necessarily present in the file, can be directly linked. A context
+defines the mapping of terms or prefixes to IRIs. If a document is
+without a context, it has every IRI in it’s absolute form.
+JSON-LD specifies multiple processing algorithms that can be
+applied on any file:
+• Compact - Compacts a file using a specified context. Can be
+used to switch between contexts.
+• Expand - Converts a compact file into its full form by removing
+the context.
+• Flatten - Flattens nested nodes in a file, and assigns identifiers
+to nodes that do not have them.
+• Frame - Reshapes a file based on a template.
+The PROV Data Model can be serialised in the JSON-LD format.
+W3C has specified a JSON schema [8] for JSON-LD serialization and
+also a context. Notably, attribute values are represented as arrays, and
+the schema does not allow nested structures within structures, with
+the exception of bundles.
+8
+1. Background and Fundamental Concepts
+1.3 The PROV Template
+The PROV Template [10] is a templating mechanism for generating
+provenance documents. It requires two files, the template itself in
+PROV-N format, specifying the topology of the document, and a set
+of bindings in JSON format, consisting of the concrete values to the
+template’s variables. During the combination of the two files, called
+expansion, the variables in the template are replaced by the corresponding values from the bindings file, resulting in the final PROV
+document.
+In Listing 1.1 an example of a template is provided. The template
+contains qualified names with the prefix var. These are the variables
+of the template that will be replaced by the values in the bindings file.
+document
+prefix t <http://openprovenance.org/tmpl#>
+prefix var <http://openprovenance.org/var#>
+prefix estat <http://purl.org/net/statjr/ns#>
+prefix estatwf <http://purl.org/net/statjr/wf#>
+bundle var:bundle
+activity(var:block_instance, [t:startTime=’var:starttime’, t:endTime=’var:endtime’, prov:type
+=’var:block_type’, t:label=’var:block_title’, estatwf:block=’ var:block_uri’])
+activity(var:parent)
+agent(var:agent)
+wasAttributedTo(var:parent, var:agent)
+wasStartedBy(var:block_instance, −, var:parent, −, [t:time=’var:starttime’])
+entity(var:consumed)
+used(var:block_instance, var:consumed, [t:time=’var:consumed_at’, estat:bindingname=’
+var:consumed_name’])
+entity(var:produced)
+wasGeneratedBy(var:produced, var:block_instance, −, [t:time=’var:produced_at’, estat:
+bindingname=’var:produced_name’])
+wasDerivedFrom(var:produced, var:consumed)
+endBundle
+endDocument
+Listing 1.1: PROV Template example, taken from [10]
+In Listing 1.2 an example of a bindings file is provided, taken
+from [10]. Every variable has its value assigned. If there are multiple
+values for the variable, multiple structures or attributes are generated.
+If a variable does not have a value, but it is a mandatory identifier,
+and other mandatory identifiers are present inside of the structure,
+for example in relations, the structure is generated and the variable is
+kept, instead of replacing it with a value. If a variable does not have
+a value, and the previous condition is not satisfied, the structure or
+attribute is not generated at all.
+9
+1. Background and Fundamental Concepts
+{
+"var": {
+"consumed": [
+{"@id": "urn_uuid:felbf93c-..." },
+{"@id": "urn_uuid 0266d11a-..." }
+],
+"consumed_at": [
+{"@type": "xsd:dateTime",
+"@value": "2016-03-08T14:21:12.085706" },
+{"@type": "xsd:dateTime",
+"@value": "2016-03-08T14:21:12.085706" }
+],
+"produced": [{"@id": "urn_uuid:0266d372- ..." }],
+"produced_at": [
+{"@type": "xsd:dateTime",
+"@value": "2016-03-08T14:21:12.085819" }
+],
+"block_instance": [{"@id": "urn_uuid:0266c6c0-" }],
+"endtime": [
+{"@type": "xsd:dateTime",
+"@value": "2016-03-08T14:21:12.085844" }
+],
+"block_type": [{"@id": "estatwf:BuiltinFunction" }],
+"agent": [{"@id": "estatwf:John" }],
+"parent": [{"@id": "urn_uuid:0266c558- ..." }]
+},
+"context": {
+"xsd": "http://www.w3.org/2001/XMLSchema #",
+"estatwf": "http://purl.org/net/statjr/wf#",
+"urn_uuid": "urn:uuid:"
+}
+}
+Listing 1.2: Variable bindings example, taken from [10]
+1.4 Common Provenance Model
+The Common Provenance Model, developed through collaboration
+between various institutions [2], is an extension of the PROV Data
+Model. It defines several new subtypes of structures, along with multiple additional attributes. The main motivation behind the creation
+of the model is to support advanced reliability and traceability of
+information to enhance reproducibility, trustworthiness, and quality
+assessment of research objects, such as biological samples or derived
+data that are documented by provenance.
+When a research object or its derivatives are shared among different organizations, each party can only offer provenance information
+for the part of the object’s lifecycle they handled. The object is seen as
+10
+1. Background and Fundamental Concepts
+an output from the sender’s process and as an input into the receiver’s.
+Each segment of provenance is packaged into a provenance component, realised as a PROV bundle. Connecting these components creates
+potentially distributed provenance chains. The main goal is to support
+backward traceability so that organisations can verify the source and
+history of an object, but forward traceability is also supported.
+The core concept of the CPM is the conceptual separation of a
+bundle into two parts:
+• The traversal information (TI) - Contains forward and backward traversal information and highlights the core process detailed in the bundle.
+• Domain-Specific Provenance (DS) - Contains additional information about the process detailed in the bundle.
+CPM does not explicitly define how many bundles can be present in
+a PROV document. The traversal information follows a standardized
+form prescribed by CPM, utilizing concrete structure subtypes, while
+the domain-specific part adheres only to PROV-DM, allowing for more
+verbosity depending on the process that’s represented.
+1.4.1 Subtypes
+The new subtypes, defined by the CPM specification [2], are all part
+of the traversal information of a bundle. The subtypes, denoted with
+the prov:type attribute, are described as follows:
+• Main Activity (MA) - The core activity represented by the
+bundle.
+• Backward Connector - An entity, representing the object that
+has been received, e.g. the input of the MA.
+• Forward Connector - An entity, representing the object that
+can be or has been sent to a receiver, e.g. the output of the MA.
+• Sender Agent - An agent representing the sender of the object
+between provenance components.
+11
+1. Background and Fundamental Concepts
+• Receiver Agent - An agent representing the receiver of the
+object between provenance components.
+• Identifier Entity - An entity representing an external identifier.
+Figure 1.2: Traversal Information part of a CPM bundle, taken from [2]
+The relations between these subtypes can be seen in Figure 1.2.
+There is exactly one main activity in a bundle, which can use a backward connector and generates a forward connector. The forward connector, found in the sender’s provenance, links to the next bundle in
+the provenance chain and shares its identifier, carrying the sender’s
+prefix, with the corresponding backward connector in the receiver’s
+provenance.
+The backward connector contains additional attributes, such as
+hash or bundle id of the previous bundle, allowing backward traversability. The CPM expects all the information for backward traversal
+to be present at the creation of a bundle. A specialisation of a forward
+connector can also be present in the bundle, containing additional
+attributes referring to the next bundle, allowing forward traversability.
+Additionally, CPM allows multiple backward or forward connectors to be present in one bundle, connected via derivations, enabling
+deeper traversal through the provenance chain, or branching.
+The traversal information and the domain-specific provenance are
+connected via specializations of the connectors, as can be seen in Figure 1.3, which is an example of the first bundle in a provenance chain.
+12
+1. Background and Fundamental Concepts
+Activities in the domain-specific provenance that are sub-activities
+of the main activity are listed as parts of the main activity, using the
+dct:hasPart attribute.
+Figure 1.3: Example of a CPM bundle with domain-specific provenance, taken from [2]
+1.4.2 Versioning
+Once a CPM bundle is created, it is considered immutable, as per
+the CPM specification [2]. This means the original version is always
+preserved without modifications. However, since some information
+might have been unknown or incorrect at the time of the creation,
+changes may be necessary. To resolve this, any modification results
+in the creation of a new version of the bundle, not an alteration of
+the original. The CPM standardizes the versioning, by defining metaprovenance of a bundle, stored in a separate bundle. All versions
+are then tracked within the meta-provenance bundle, utilizing the
+Revision relation, example of which can be seen in Figure 1.4.
+13
+1. Background and Fundamental Concepts
+Figure 1.4: Example of Meta-Provenance bundle, taken from [2]
+1.5 ProvToolBox
+ProvToolBox, developed by one of the editors of the PROV standard
+Luc Moreau [11], is a Java implementation of the PROV Data Model.
+The library supports the serialisation and deserialisation of common
+PROV representations, such as PROV-N [3] or JSON-LD [8] and also
+graphical representations such as SVG or PNG utilizing the Graphviz
+software2
+. The library also contains a reference implementation of
+the PROV Template mechanism [10], validation algorithms to check
+selected PROV Constraints [5], utility classes for in-memory manipulation of PROV Documents and also supports querying and merging
+of documents with an in-memory representation.
+The PROV terms in ProvToolBox are mapped as follows:
+• Statement - PROV Structure
+• Element - PROV Type
+• Kind - Type of Structure (e.g. Entity, Generation, ...)
+• Effect - Source of a Relation
+• Cause - Target of a Relation
+2. https://graphviz.org/
+14
+1. Background and Fundamental Concepts
+1.5.1 Model Design
+The in-memory representation of the PROV documents is based on the
+composition over inheritance principle in OOP [12, p. 20]. This means
+that instead of inheritance from parent classes, there are multiple interfaces defined for each common characteristics between structures.
+The interfaces for all PROV structures and attributes, including the
+Document interface, are defined in the prov-model module. The concrete objects, based on the implementation chosen, are instantiated by
+the ProvFactory class, following the Abstract Factory design pattern.
+The IndexedDocument class, which supports querying and merging
+of documents, is part of the prov-model module. It is an implementation of the StatementAction interface, which prescribes an action for
+every Kind of Statement. The constructor of the class takes a Document
+and indexes each Statement based on its Kind and, if present, its identifier. The representation is mutable and allows for a transformation
+back into a Document, but even if no changes were made, the order of
+the statements is not preserved.
+1.5.2 Vanilla Implementation
+The library includes a basic implementation of the model’s interfaces,
+located in the vanilla package of the prov-model module. In this
+vanilla implementation, each Kind of Statement does not contain reference to other Statements that utilize its qualified name. For example,
+relations do not contain reference to the elements they connect. As a
+result, the implementation can process partially complete documents
+that lack the expected elements, because it does not verify whether
+an element with the correct qualified name exists nor if it is of the
+correct Kind. The implementation of a Document is a linked list of
+Statements and Bundles, which are also linked lists of Statements
+and is not indexed at all. In addition to the vanilla Java implementation
+of the model, the library also contains a mutable and immutable Scala
+implementation.
+In Listing 1.3, an in-memory PROV Document is instantiated with
+one bundle, identified by ex:bundle, containing one entity with the
+id ex:entity.
+15
+1. Background and Fundamental Concepts
+ProvFactory pF = new org.openprovenance.prov.vanilla.ProvFactory();
+Document document = pF.newDocument();
+QualifiedName id = pF.newQualifiedName("https://example.org/", "entity", "ex");
+Entity entity = pF.newEntity(id);
+QualifiedName bundleId = pF.newQualifiedName("https://example.org/", "bundle", "ex");
+Bundle bundle = pF.newNamedBundle(bundleId, List.of(entity));
+document.getStatementOrBundle().add(bundle);
+Listing 1.3: Instantiation of a Document in ProvToolBox
+There is no need for explicit namespace declarations, as during
+serialisation, all namespaces are inferred from the qualified names
+present in the document using the NamespaceGatherer class. If a default namespace is needed in the serialised document, it must be
+specified. Declaring namespaces in a Document, however, simplifies
+qualified name creation, as a new qualified name can be instantiated
+with just the prefix and local part, without the need to specify the full
+IRI.
+1.5.3 Selected supporting modules
+Each serialisation and deserialisation into the various supported file
+formats implements the ProvDeserialiser and ProvSerialiser interfaces, also defined in the prov-model module. The implementations of
+the serialisers and deserialisers are in separate modules, based on the
+format. This functionality is unified under the InteropFramework class,
+which is part of the prov-interop module and utilizes the vanilla implementation in the background.
+The validation algorithms of selected constraints are implemented
+in the prov-validation module and a report of the violated constraints in a Document can be generated by utilizing the Validate class.
+The PROV Template implementation is part of the prov-template
+module, with the corresponding class being the Expander, which takes
+the template Document object and a Bindings object, deserialised from
+a JSON file, and combines them into a new Document.
+1.6 The Python PROV Package
+The Python PROV package, developed by one of the editors of the
+PROV standard Dong Huynh [13], is a Python implementation of
+the PROV Data Model. It supports serialisation and deserialisation
+16
+1. Background and Fundamental Concepts
+into common PROV standards - PROV-N, XML, JSON, however, it
+lacks support for JSON-LD. Similarly to ProvToolBox, it also offers
+serialisation into graphical representations using the Graphviz software, and also in-memory transformation into MultiDiGraph3 and
+back. The library does not support PROV Templates, does not offer a
+constraint validation functionality and the internal representation is
+not queryable.
+The architecture is based off standard object inheritance, without
+any abstractions. As such, there is only one implementation of the
+model. The PROV structures inside of a Document or Bundle are kept
+in a standard List. Furthermore, the whole representation of the PROV
+Data Model is implemented in one giant file, including common parts
+of serialisation and deserialisation, hindering overall readability and
+extensibility.
+3. https://networkx.org/documentation/stable/reference/classes/
+multidigraph.html
+17
+2 Requirements and Design Considerations
+In this chapter, the requirements placed upon the CPM reference
+implementation, the demands on the templating mechanism, shortcomings of previous approaches, and the analysis and design of proposed solutions are discussed.
+2.1 CPM reference implementation requirements
+Several key requirements have been collected during the initial analysis. The functional requirements include:
+1. Support for the full verbosity of the PROV Data Model for
+domain-specific provenance.
+2. Serialisation and deserialisation into common PROV formats.
+3. In-memory mutability of a bundle before persistence, including
+modification of the bundle’s identifier.
+4. In-memory representation of a bundle as a directed traversable
+graph.
+5. Singular template for traversal information instantiation.
+6. Traversability and queryability of the bundle.
+The last requirement can be further specified into these functionalities:
+6.1 Retrieve entity, agent or activity from an identifier.
+6.2 Retrieve relation from an identifier or from source and target
+type identifiers.
+6.3 Retrieve main activity.
+6.4 Retrieve forward connectors.
+6.5 Retrieve backward connectors.
+18
+2. Requirements and Design Considerations
+6.6 Retrieve preceding connectors from connector identifier.
+6.7 Retrieve successive connectors from connector identifier.
+6.8 Retrieve traversal information part of the bundle as a traversable sub-graph without access to domain-specific provenance.
+6.9 Retrieve domain-specific provenance part of the bundle as a
+traversable sub-graph without access to traversal information.
+6.10 Retrieve relations between traversal information and domainspecific provenance.
+6.11 Recreate bundle from cross-part relations, traversal information
+sub-graph and domain-specific provenance sub-graph.
+The non-functional requirements state that the implementation
+shall either build on existing solutions in Java or Python or be built
+from scratch in Java.
+2.2 Analysis of approaches
+As the requirements state, the reference implementation shall support
+the full verbosity of the PROV Data Model, in addition to serialisation
+and deserialisation into common PROV formats. These requirements
+are non-trivial, hence the sensible approach was to consider extension
+of existing libraries that already implement this functionality so that
+the CPM-specific requirements can be the focus of this work.
+Previous attempts have been made to represent PROV documents
+as graphs. One such attempt was a Python library, developed as a
+Bachelor thesis by Roland Olejník [14]. Although the solution achieved
+its goals, the library lacks serialisation and deserialisation capabilities,
+and as such, it was not a valid choice for this work.
+Out of the existing state-of-the-art solutions, the ProvToolBox
+developed in Java [11] and the Python Prov package [13], it has
+been decided to extend the ProvToolBox. The cleaner overall architecture of the library, allowing for greater extensibility, the queryable
+IndexedDocument class that can serve as inspiration for the design,
+the reference implementation of the PROV Templates, along with
+19
+2. Requirements and Design Considerations
+greater personal experience with the Java language itself, were all
+reasons for the final choice. Henceforth, ProvToolBox terms, defined
+in Chapter 1.5, will be used to refer to PROV terms in this work.
+2.3 Design of the extension
+By choosing to extend the ProvToolBox library, requirements no. 1
+through no. 3 have been inherently satisfied. To satisfy requirements
+no. 4 and no. 6, IndexedDocument class served as inspiration. A CpmDocument class has been created implementing the StatementAction
+interface and supports conversion from Document and back. The CpmDocument class represents a PROV document with one CPM bundle.
+2.3.1 Graph representation
+The internal implementation in the CpmDocument is a traversable graph.
+As such, references in elements and relations must be included. Creating a new implementation for each Statement was considered, but it
+was deemed excessive and was ultimately not needed. Instead, two
+wrapper interfaces have been created, utilizing the Decorator pattern
+and conforming to the composition over inheritance principle.
+An INode interface has been defined that wraps all elements of the
+same Kind with the same identifier, satisfying identifier constraints,
+explained in Chapter 1.1.5. A handleDuplicate method has been defined, to allow separate handling of duplicate elements in each implementation of the interface. A node also contains edges in which the
+node acts as either a cause or an effect.
+Furthermore, an IEdge interface has been defined that wraps all relations of the same Kind with the same cause and effect. A handleDuplicate method has been defined for the same purpose as in the INode
+interface. An edge contains a cause node and an effect node.
+The INode and IEdge both extend a Component interface, uniting
+both as a component of the in-memory graph. Lastly, an ICpmFactory
+interface has been defined that wraps ProvFactory interface to instantiate concrete implementations of the INode and IEdge interfaces,
+supporting different internal representations. The class diagram in
+Figure 2.1, shows the described interfaces.
+20
+2. Requirements and Design Considerations
+Figure 2.1: Class Diagram of interfaces for Graph Representation
+The CpmDocument class supports all functionalities specified by
+requirements 6.1 through 6.11. Similarly to IndexedDocument, the representation is fully mutable, within the limits of the ProvToolBox’s
+native support.
+Validation that a bundle adheres to the CPM standard needs to
+occur in the moment of a "finalization event", which has to take place
+at the latest when the bundle is saved to a long term storage. This is
+outside the scope of this work and as such, only trivial checks needed
+for the transformation are implemented.
+The constructor only validates null objects and ensures the presence of exactly one bundle in the Document. Otherwise, any Document
+meeting these checks is transformable into CpmDocument and back,
+with CPM-specific methods failing gracefully, e.g. by returning null
+objects.
+2.3.2 CPM Generation Process
+To satisfy requirement no. 5, several approaches have also been considered. The PROV Template mechanism has already been used for
+the generation of CPM bundles, as part of a master thesis by Vojtěch
+21
+2. Requirements and Design Considerations
+Jurka [15]. During the implementation, it was discovered that PROV
+Template is not suitable for the generation of the traversal information
+part of the CPM bundle. This is because not all CPM bundles have topologically equivalent traversal information parts. For example, the first
+bundle in a provenance chain does not contain a backward connector.
+Furthermore, CPM allows multiple branching chains of connectors in
+the traversal information part. As a result, a separate PROV template
+would be required for each topologically unique traversal information,
+with a separate bindings file for each unique instance of the template.
+Therefore, it has been decided that a new templating mechanism
+will be created, based on classes that will be serializable and deserializable into JSON, further described in Chapter 2.3.3. The traversal
+information will then be instantiated either by a JSON file, which
+will be deserialised into a Java object, or by direct instantiation of
+this object in-memory. A transformation mechanism into ProvToolBox
+Document object has been implemented. The domain-specific provenance will then be instantiated via any mechanism provided by the
+ProvToolBox library, be it PROV Template, in-memory instantiation or
+deserialisation from any of the supported formats.
+By combining these two parts and defining Specialization relations
+between them, a merged ProvToolBox Document object will be created,
+containing one CPM bundle. The merging of TI and DS parts should
+be flexible, supporting many different approaches. A prospective user
+should be able to implement it according to their specific requirements.
+This Document object can then be transformed into CpmDocument object, to utilize the traversal functionality, or serialised into any of the
+supported formats. The whole process is visualized in Figure 2.2.
+Figure 2.2: CPM Templating process
+22
+2. Requirements and Design Considerations
+2.3.3 Traversal Information Template JSON
+The main idea of the template is to simplify the instantiation of the
+traversal information part using a singular JSON template. Instead
+of requiring multiple templates with unique binding files for each
+instance, as with the PROV template approach, only the values within
+this template need to be set.
+The proposed template therefore consists of these 8 JSON objects:
+• Prefixes - Represents namespaces, identically to PROV JSON
+namespace representation [7] as map of prefixes to IRIs.
+• MainActivity - Contains MA attributes, Used relation from a
+backward connector and WasGeneratedBy relation to a forward
+connector.
+• BundleName - Bundle identifier in Qualified name format.
+• BackwardConnectors - List of all backward connectors, each
+allowing permitted attributes, Attributions to receiver agents
+and Derivations from other connectors.
+• ForwardConnectors - List of all forward connectors, each allowing permitted attributes, Attributions to Sender Agents,
+Specializations to other forward connectors and Derivations
+from other connectors.
+• SenderAgents - List of all sender agents, each allowing permitted attributes.
+• ReceiverAgents - List of all sender agents, each allowing permitted attributes.
+• IdentifierEntities - List of all identifier entities, each allowing
+permitted attributes.
+Only prefixes, bundle name and main activity are required and
+all attributes, except for mandatory element identifiers, are optional.
+Relations are represented either by a string in the format of a qualified
+name of the cause or effect element, or by a JSON object, allowing
+optional identifier for the relation. In Listing 2.1 an exemplary JSON
+is provided, with most optional attributes omitted. The full JSON
+schema is part of the electronic archive described in Appendix A.
+23
+2. Requirements and Design Considerations
+{
+"prefixes": {
+"ex": "http://www.example.com/"
+},
+"mainActivity": {
+"id": "ex:activity1",
+"hasPart": [
+"ex:subActivity1"
+],
+"used": [
+{
+"id": "ex:mainActivityUsed1",
+"bcId": "ex:forwardConnector1"
+}
+],
+"generated": [
+"ex:forwardConnector1"
+]
+},
+"bundleName": "ex:bundle1",
+"backwardConnectors": [
+{
+"id": "ex:backwardConnector1",
+"attributedTo": {
+"agentId": "ex:receiverAgent1"
+}
+}
+],
+"forwardConnectors": [
+{
+"id": "ex:forwardConnector1",
+"derivedFrom": [
+"ex:backwardConnector1"
+]
+}
+],
+"senderAgents": [
+{
+"id": "ex:senderAgent1"
+}
+],
+"receiverAgents": [
+{
+"id": "ex:receiverAgent1"
+}
+],
+"identifierEntities": [
+{
+"id": "ex:identifierEntity1",
+"externalId": "ex:externalId1"
+}
+]
+}
+Listing 2.1: Traversal Information Template example
+24
+3 Implementation
+In this chapter, the reference implementation, it’s modules, the CpmDocument’s internal structures and algorithms, different component interface implementations and their behaviours and in-memory template
+transformation are presented.
+3.1 Structure of the Reference Implementation
+As mentioned in the previous chapter, the reference implementation of
+CPM is built on top of the ProvToolBox library, serving as it’s extension.
+As such, it was natural to use Maven4 as the build tool, as this tool is
+also used in the ProvToolBox library. The CPM library that has been
+created is split into two main modules - cpm-core and cpm-template,
+as there is a natural separation between traversability and templating
+functionalities.
+3.1.1 Cpm-core module
+The cpm-core module contains namely the model package, consisting of INode, IEdge and Component interfaces, ICpmFactory, for instantiating them and ICpmProvFactory for instantiating ProvToolBox classes representing CPM subtypes and attributes. The package also contains the CpmDocument class that offers the traversability
+and querability functionalities, described in detail in Appendix B,
+the ITIStrategy class for Traversal Information Algorithm, described
+further in Chapter 3.3, CpmUtilities and ProvUtilities2 classes providing helper methods, with ProvUtilities2 serving as an extension
+to ProvUtilities class from ProvToolBox library.
+Beyond the model package, the cpm-core module consists of several
+additional packages:
+• vanilla – Contains an implementation of the ICpmProvFactory
+interface utilizing the vanilla Statement implementations from
+ProvToolBox.
+4. https://maven.apache.org/
+25
+3. Implementation
+• merged, divided.unordered, and divided.ordered – Contain
+Component implementations, further described in Chapter 3.4.
+• strategy – Houses the ITIStrategy implementation, further
+described in Chapter 3.3.
+• constants and exception - Packages with supporting classes.
+The directory structure of the cpm-core module is as follows:
+cpm-core/
+src/main/java/cz.muni.fi.cpm
+constants
+divided
+ordered
+unordered
+exception
+merged
+model
+strategy
+vanilla
+3.1.2 Cpm-template module
+The cpm-template module, which depends on the cpm-core module,
+consists of the schema package, which holds classes equivalent to
+the JSON objects described in Chapter 2.3.3, deserialisation and
+serialisation packages, containing classes for processing of the
+JSON objects and mapper package containing classes for mapping
+from the schema objects to ProvToolBox objects.
+The directory structure of the cpm-template module is as follows:
+cpm-template/
+src/main/java/cz.muni.fi.cpm.template
+deserialisation
+mapper
+schema
+serialisation
+3.2 CpmDocument implementation
+The internal representation within the CpmDocument class is a traversable graph. To support lookup of nodes and edges, wrapping el26
+3. Implementation
+ements and relations as explained in Chapter 2.3.1, the objects are
+stored using various data structures:
+• Nodes: A nested map of type Map<QualifiedName, Map<Kind,
+INode>> where:
+– QuailifiedName is the identifier of a node.
+– Kind is the Kind of Statement of a node.
+– INode is the actual node object.
+• Edges: A list of IEdge objects
+The nodes map allows multiple element kinds to share the same identifier, following Constraint 55, mentioned in Chapter 1.1.5. However, as
+there were no requirements to implement the validation of constraints,
+an entity and an activity can also share an identifier.
+Because the elements and relations are loaded sequentially, with
+no guarantee that all required statements are present in the document,
+there is a need for various supporting structures for instantiating the
+references in nodes and edges. These structures include:
+• Effect Edges: A nested map of type Map<QualifiedName,
+Map<Kind, IEdge>>, mapping identifiers to kinds to edges where
+the identifier serves as an effect, until a node corresponding to
+the identifier and kind is added.
+• Cause Edges: A nested map of type Map<QualifiedName,
+Map<Kind, IEdge>>, mapping identifiers to kinds to edges where
+the identifier serves as a cause, until a node corresponding to
+the identifier and kind is added.
+• Effect Influences: A nested map of type Map<QualifiedName,
+Map<QualifiedName, IEdge>>, mapping effect identifiers to
+cause identifiers to influence edges between these identifiers
+present in the document.
+• Cause Influences: A nested map of type Map<QualifiedName,
+Map<QualifiedName, IEdge>>, mapping cause identifiers to
+effect identifiers to influence edges between these identifiers
+present in the document.
+27
+3. Implementation
+3.2.1 Node Creation and Mapping
+When an element is added, these steps are followed:
+1. Create a clone of the element.
+2. If there exists a node for the same identifier and Kind, call
+handleDuplicate method on the existing node and return.
+3. Create a new INode object wrapping the cloned element.
+4. Store it in the nodes map using its identifier and Kind.
+5. If there are pending edges in effectEdges or causeEdges, update the references between this node and the edges and remove
+the entry from the corresponding map.
+6. Process influence edges as described in Chapter 3.2.4.
+3.2.2 Edge Creation and Mapping
+When a relation is added, these steps are followed:
+1. Create a clone of the relation.
+2. If an edge with the same cause, effect, Kind, and optionally
+identifier exists, call handleDuplicate on the edge and return.
+3. Create a new IEdge object wrapping the cloned relation.
+4. Extract the effect and cause identifiers from the relation using
+ProvUtilities getEffect and getCause methods.
+5. Extract the effect and cause Kind from the relation using ProvUtilities2 getEffectKind and getCauseKind methods.
+6. Handle node references:
+- If matching nodes exist, update the references.
+- Else, store the edge in effectEdges or causeEdges or both.
+7. Add the edge to the edges list.
+The CpmDocument class contains a supporting method areAllRelationsMapped that checks whether every edge has references to corresponding cause and effect nodes.
+28
+3. Implementation
+3.2.3 Membership Mapping
+Membership relations are n-nary relations, as defined in Chapter 1.1.4.
+Since IEdge is binary, when Membership relation is added, n binary
+edges are created using the previously specified algorithm each wrapping the same relation object. The identical Membership relation objects are discarded when transforming back to ProvToolBox Document,
+keeping only the first occurrence.
+3.2.4 Influence Mapping
+Influence relations need to be handled separately, because cause and
+effect kinds are not known, since influence relations are super-type
+for all relations, as defined in Chapter 1.1.4. As a consequence, there
+is a need to create binary edges between all cause and effect nodes
+with these identifiers, no matter their Kind. Up to 9 edge objects can
+therefore be created for each Influence relation present in the original
+ProvToolBox Document, since entity and activity are also allowed to
+share an identifier.
+When an influence relation is added, these steps are followed:
+1. Extract the cause and effect identifiers.
+2. Retrieve all nodes with corresponding identifier:
+- If multiple cause and effect nodes exist, create edges
+connecting all of them.
+- If cause, effect or both are missing, instantiate the edges
+only for the nodes that are present.
+3. Add the created influence edges to both causeInfluences and
+effectInfluences.
+When a node is added, in step 6 of the process described in Chapter 3.2.1, check if the node has values in the causeInfluences map as
+a cause. If yes, for each effect identifier for this node’s identifier, retrieve a list of influences from the causeInfluences map and update
+the stored edges by following these steps:
+29
+3. Implementation
+1. If the cause node is not set in the first influence from the influences list5
+:
+a. Set the new node as the cause for all edges in the influences
+list.
+b. Add the edges from influences list to the new node’s
+causeEdges.
+2. Otherwise, for each unique effect node in the influences list,
+or for null if no effect node is present:
+a. Create a new edge.
+b. Set the new node as the cause.
+c. Add the edge to the new node’s causeEdges.
+d. If the effect node is not null:
+- Set this effect node as the effect of the edge.
+- Add the edge to the effect node’s effectEdges.
+e. Add the edge to the edges list and update both causeInfluences and effectInfluences.
+The same algorithm is followed for each influence, where the node
+is an effect, with the cause and effect roles reversed. Similarly
+to Membership relations, identical relation objects representing the
+same Influence relation are wrapped in the individual edges by this
+algorithm. These are also discarded when transforming back to ProvToolBox Document, keeping only the first occurrence.
+3.3 Traversal Information Algorithm
+For this work, an algorithm for determining whether an element
+belongs to traversal information or domain-specific provenance is
+needed, in order to satisfy requirements no. 6.8 through no. 6.10, defined in Chapter 2.1. At the time of writing, no conclusive algorithm
+has been specified.
+5. In this case, all other influences in the influences list also have cause node set
+to null
+30
+3. Implementation
+It has been decided that an algorithm based on the presence of
+traversal information specific attributes within element will be designed. Attributes allowed in traversal information are defined as
+attributes belonging to the CPM namespace, with prefix "cpm" and IRI
+"https://commonprovenancemodel.org/ns/cpm/", or the dct:hasPart attribute.
+A known edge case comes from connector specializations. In CPM,
+forward connector specializations are allowed in traversal information. However, domain-specific provenance is connected to traversal
+information also by specializations. The algorithm then includes steps
+to classify forward connector specializations as traversal information.
+A consequence of this is that any specialization of a forward connector, containing no additional attributes, is classified as a traversal
+information element.
+The algorithm follows these steps:
+1. If the element contains attributes that are not allowed in traversal information, classify it as a Domain-specific element.
+2. If the element has a CPM prov:type and is not a specialization
+of another element, classify it as a Traversal information element.
+3. If the element is a specialization of more than one element,
+classify it as Domain-specific element.
+4. If the general element (i.e., the element from which the given
+element is specialized) contains attributes that are not allowed
+in traversal information, classify the specialized element as
+Domain-specific element.
+5. If the general element has a prov:type with value forwardConnector, and the specific element either has no prov:type
+or has prov:type with value forwardConnector, classify it as
+Traversal information element.
+As this algorithm might be changed or replaced in the future, it has
+been implemented using the strategy pattern by defining ITIStrategy
+interface with boolean method belongsToTraversalInformation in
+package model. The CpmDocument is initialized with the AttributeTIStrategy class from the strategy package, implementing the above
+algorithm and can be replaced by a setter method.
+31
+3. Implementation
+3.4 CpmDocument component implementations
+There are two different implementations of the interfaces defined in
+Chapter 2.3.1 in the CPM library - divided and merged - and three
+factories to instantiate them. The implementations differ in how they
+handle addition of duplicate statements.
+Duplicate statements are considered to be elements with the same
+identifier and kind and relations with the same effect, cause and kind.
+In the case of the Membership relation, if the identifier of the collection
+and the list of members is the same, the relation is deemed a duplicate. The creation of identical membership and influence relations,
+as described in Chapters 3.2.3 and 3.2.4 respectively, happens after
+duplicates handling as described in Chapters 3.2.1 and 3.2.2.
+In addition to instantiation of the nodes and edges, each factory
+specifies a getComponentsTransformer that returns a transformer function from graph components to ProvToolBox statements, used when
+converting back from CpmDocument to ProvToolBox Document, removing identical membership and influence relations generated during
+their addition.
+3.4.1 Merged Implementation
+The merged implementations of nodes and edges, MergedNode and
+MergedEdge, wrap exactly one Statement object inside. The handleDuplicate method utilizes a merging algorithm. Generally the lists of
+attributes of the two elements are merged. Any duplicate attributes are
+removed, keeping only one of each. The algorithm throws an exception
+in these cases:
+• For Activities: If there is a conflict in start or end times
+• For Entities: If there is a conflict in the prov:value attribute
+To utilize the Merged implementation, the CpmMergedFactory
+needs to be passed as a constructor argument to the CpmDocument class.
+During round-trip in-memory conversions between CpmDocument and
+ProvToolBox Document, there are no guarantees about the ordering of
+statements.
+32
+3. Implementation
+3.4.2 Divided Implementation
+The divided implementations of nodes and edges, DividedNode and
+DividedEdge, contain a list of all statements corresponding to the
+component. There are two factories defined that a prospective user
+can utilize to use the Divided implementation - CpmUnorderedFactory
+and CpmOrderedFactory.
+• CpmUnorderedFactory - does not offer any guarantees about
+statement ordering during round-trip in-memory conversions
+between the CpmDocument and ProvToolBox Document objects
+• CpmOrderedFactory - guarantees that the original order from
+the initial ProvToolBox Document is kept
+To keep the order, the CpmOrderedFactory utilizes an OrderManager
+that keeps an identity-based map between statements and the order in
+which they were added to the CpmDocument. If a statement is removed,
+the order of the other statements does not change. If a new statement
+is added, it is appended to the end. If a previously deleted statement
+is added, it is appended to the end as well because a clone of the
+statement, with a different identity, is created upon addition, as described in Chapters 3.2.1 and 3.2.2. When modifying the CpmDocument
+using the methods defined in Appendix B.1, the order of statements
+is not changed. When transforming back to ProvToolBox Document,
+the getComponentsTransformer method utilizes the OrderManager to
+sort the statements.
+3.5 Deserialisation and serialisation of the template
+The TraversalInformationDeserializer class and the TraversalInformationSerializer class, which are part of the deserialisation
+and serialisation packages of the cpm-template module respectively, are responsible for processing of the JSON template, described
+in Chapter 2.3.3. The classes work with the TraversalInformation
+object, which is part of the schema package of the cpm-template and
+represents the template in Java. The classes utilize the ObjectMapper
+from the Jackson library6
+to handle JSON data and integrate custom
+6. https://github.com/FasterXML/jackson
+33
+3. Implementation
+modules for the processing QualifiedName objects and for the serialisation of XMLGregorianCalendar.
+3.5.1 Mapping of template to ProvToolBox objects
+The deserialised template objects are mapped to PROV statements
+and document using the TemplateProvMapper class, which is part of
+the mapper package of the cpm-template module. The class uses an instance of ICpmProvFactory to create PROV statements and document.
+It is used in the TraversalInformationDeserializer, for deserialisation from JSON directly to ProvToolBox Document.
+Mapping to statements
+Generally, each map method with return type List<Statements> in
+the TemplateProvMapper class follows these steps:
+1. Create a list of attributes based on the present properties of the
+template object.
+2. Add these attributes to a new PROV element, representing the
+object.
+3. Create relations based on properties described in Chapter 2.3.3.
+Sender and Receiver agent identifiers
+CPM allows for an agent to be both a sender and receiver within the
+same bundle. There are two approaches to tackle this - either define
+two agents with the same identifier - one with prov:type SenderAgent
+and the other with prov:type ReceiverAgent - or merge them into a
+single agent with both subtypes. Both approaches are valid, but the
+first approach is not supported in PROV-JSON [7], as all identifiers
+are required to be unique in this format. Therefore, a boolean flag
+mergeAgents is provided in the mapper to let a prospective user choose
+their preferred approach.
+34
+3. Implementation
+Mapping to document
+The map(TraversalInformation ti) method in the TemplateProvMapper class maps a TraversalInformation object to a ProvToolBox
+Document accordingly:
+1. Collect all statements from all the properties by calling the map
+methods.
+• If mergeAgents is true, merge sender and receiver agents
+sharing identifiers.
+2. Create a namespace based on the prefixes property, extending
+it with known CPM, DCT, PROV and XSD namespace declarations.
+3. Create a bundle with all the collected statements.
+4. Create a new PROV document with the namespace and the
+bundle.
+35
+4 Application of the Library to MMCI Data
+As part of the assignment, data by Masaryk Memorial Cancer Insitute
+(MMCI)7 has been provided to test the functionalities of the library.
+This chapter describes said data, modelling of processes surrounding
+the data to CPM, and creation of CPM bundles using the developed
+library.
+4.1 Data Description and Provenance Modelling
+The data was originally created by Šimon Konář for testing purposes
+as part of his Master’s thesis [16]. It is in XML format and contains
+information about multiple samples of two types: tissue, stored in
+Long Term Storage (LTS), and diagnostic material, stored in Short
+Term Storage (STS). All samples in the data belong to a single patient.
+The Listing 4.1 is an excerpt of this data, representing information for
+one tissue sample.
+<patient biobank="MOU" consent="true" id="33" month="−−01" sex="female" year="1999" ...>
+<LTS>
+<tissue number="888" sampleId="BBM:2032:888:1" year="2032">
+<samplesNo>3</samplesNo>
+<availableSamplesNo>3</availableSamplesNo>
+<materialType>1</materialType>
+<pTNM>T4bN1M</pTNM>
+<morphology>8500/32</morphology>
+<diagnosis>C509</diagnosis>
+<cutTime>2032−11−23T09:40:00</cutTime>
+<freezeTime>2032−11−23T09:08:00</freezeTime>
+<retrieved>operational</retrieved>
+</tissue>
+<!−− more <tissue> elements −−>
+</LTS>
+<STS>
+<!−− <diagnosisMaterial> elements −−>
+</STS>
+</patient>
+Listing 4.1: Excerpt from the MMCI XML data
+The XML data does not describe a process, but CPM requires one.
+Therefore, the activities of acquiring and storing of the samples were
+chosen to be modelled, split into two bundles. For each sample, an
+7. https://www.mou.cz/en/
+36
+4. Application of the Library to MMCI Data
+acquisition and storage bundle, each realised in a separate provenance
+document, have been created using the CPM structure. In domainspecific part of these bundles, provenance structure types for biological
+material handling [17] have been used.
+Figures 4.1 and 4.2, visualising the acquisition and storage bundles, have namespace prefixes, derivation of forward connector from
+backward connector and additional attributes omitted for readability.
+4.1.1 Acquisition bundle
+The acquisition bundle uses the CPM structure and is therefore split
+into the traversal information and domain-specific provenance parts.
+In the traversal information part, the bundle contains a main activity
+that generates a forward connector, sampleAcqConnector, which has a
+specialisation that is attributed to a receiver agent, which represents
+MMCI and a reference to the storage bundle.
+In the domain-specific provenance, an acquisition activity is also
+present, that generates a sample entity that is a specialisation of the
+sampleAcqConnector.
+The bundle can be seen visualized in Figure 4.1. In the actual
+bundles, each qualified name of a statement is suffixed by the patient
+and sample identifiers from the original XML.
+Figure 4.1: Provenance information of sample acquisition
+37
+4. Application of the Library to MMCI Data
+4.1.2 Storage bundle
+In the traversal information part of the storage bundle, the sampleAcqConnector is a backward connector with a reference to the acquisition
+bundle. This connector is attributed to a sender agent, which represents the university hospital. This connector is used by the main
+activity, storage, which further generates the sampleStorConnector.
+In domain-specific provenance the bundle contains a transport
+activity which generates a sampleTrans entity. This entity is also derived
+from a patient entity, which contains attributes describing the patient
+such as sex, birth year, etc. The sampleTrans entity is used by storageAct
+activity that generates a sampleStorage entity. This entity contains all
+the attributes of a single sample, such as material type or diagnosis,
+from the original XML.
+The bundle can be seen visualized in Figure 4.2. In the actual
+bundles, the qualified names of statements are also suffixed by patient
+and sample identifiers as in the acquisition bundle, with the exception
+of the patient entity, that’s suffixed only by the patient identifier.
+Figure 4.2: Provenance information of sample storage
+38
+4. Application of the Library to MMCI Data
+4.2 Comparison of template mechanisms
+To compare the previous approach using the PROV template by Vojtěch Jurka [15] and the templating approach developed in this work
+for the creation of traversal information, provenance documents containing the CPM bundles were created using both mechanisms.
+To parse the XML data, Java objects representing the XML elements
+have been created, and then the Jackson Dataformat XML library8 has
+been used to deserialise the XML data into those objects. The process
+only differed in the creation of traversal information, following these
+general steps for each sample:
+1. Create suffix for the sample by combining patient id and sample
+id.
+2. Create traversal information PROV document.
+3. Add domain-specific provenance to the PROV document.
+4.2.1 The PROV template mechanism
+To create a document containing the traversal information using the
+PROV template mechanism, first a PROV-N template document was
+created for both the acquisition and the storage bundles. To populate
+the document, for each sample these steps were followed:
+1. Create a bindings file in-memory.
+2. Combine bindings and template document to a PROV document.
+The approach allows for separation of concerns; the logic is separated from the PROV-N template. This allows for more flexibility and
+is easier to maintain by domain experts, as PROV-N is easier to read
+for non-developers.
+However, this approach is fragile, as mismatches between template
+document and bindings can cause runtime issues and both files need to
+be maintained and in sync. Furthermore, the responsibility of creating
+8. https://github.com/FasterXML/jackson-dataformat-xml
+39
+4. Application of the Library to MMCI Data
+both the template and bindings files for each topologically unique
+traversal information part is put on a prospective user, raising the risk
+of inconsistency between multiple systems and use cases.
+The creation of the template document can be also done in-memory
+using the functionalities of the ProvToolBox library. However, if this
+more programmatic approach is chosen, in this specific case it is easier
+to build the traversal information PROV document directly, bypassing
+the templating and bindings mechanism altogether.
+4.2.2 The CPM template mechanism
+To create a document containing the traversal information using the
+template mechanism defined in this work, these steps were followed
+to create both acquisition and storage bundles for each sample:
+1. Create traversal information object in-memory.
+2. Map traversal information to a PROV document.
+With this approach, only one file needs to be maintained. The
+traversal information object serves as a replacement for the bindings
+file, bypassing the need for a template file altogether. This approach
+offers a layer of abstraction, as the structure maps directly to domain
+concepts such as backward connector or main activity. Furthermore,
+since the template will be maintained by the developers of the CPM,
+it offloads the responsibility for creating the template for the traversal
+information for each use case from a prospective user.
+The cost of using this approach comes from less flexibility and expressivity, but this reduces the potential for errors. Another drawback
+is that a prospective user must learn a new format, whereas the PROV
+template mechanism is more commonly used.
+40
+5 Application of the Library to EMBRC Data
+In addition to MMCI data, provenance about four datasets, developed
+by European Marine Biology Resource Centre (EMBRC)9 and Flanders
+Marine Institute (VLIZ)10, have also been provided to be reworked
+into the CPM and to test the functionalities of the library developed
+in this work. The provenance information was developed to serve as
+realistic examples of the EMBRC Provenance Model [18].
+This chapter describes the provenance information about these
+datasets, the modifications needed to parse them and the resulting
+CPM bundles for each dataset. Lastly, it covers the storage of the documents containing the CPM bundles in a service for their management,
+the Provenance Storage service [19], and the resulting challenges.
+5.1 Description of data
+The following brief summary of the datasets and their provenance is
+based on an accompanying document that was provided alongside
+the data [20]. The provenance information about these datasets is
+referred to as provenance metadata in the original text.
+5.1.1 Dataset 1 - Log Sheets
+The first dataset contains log sheets recorded during a sampling campaign. The provenance information describes both the log sheets and
+the resulting water samples from the campaign. It consists of these
+activities:
+1. Sampling activity - A person collects a water sample at a specific time and location aboard a research vessel, following protocols.
+2. Observing activity - The same person records a set of environmental measurements at the same time and location, following
+a different set of protocols.
+9. https://www.embrc.eu/
+10. https://www.vliz.be/en
+41
+5. Application of the Library to EMBRC Data
+3. Material processing activity - The water sample is filtered,
+producing two subsamples.
+4. Storing activities - The two subsamples are placed into cold
+storage on the research vessel.
+5.1.2 Dataset 2 - FlowCam images
+The second dataset consists of raw images, protocol and settings file
+resulting from the creation of photographs of microorganisms by a
+FlowCam11 of one of the subsamples produced by the sampling campaign. The provenance information consists of a material processing
+activity done at a certain time and location by a person following
+protocols, with the dataset as its output.
+5.1.3 Dataset 3 - FlowCam results
+The third dataset consists of CSV files outputted by FlowCam image
+recognition software run on the raw images that form Dataset 2. The
+provenance information consists of a data processing activity done at
+a specific time and location by a person using a device with particular
+configuration.
+5.1.4 Dataset 4 - The DNA dataset
+The fourth dataset consists of DNA sequences produced by a genomics
+facility by processing the second subsample produced by the sampling
+campaign. The provenance information describing the creation of
+these sequences consists of these activities:
+1. Storing activity - The subsample is initially stored at a marine
+station after the return of the sampling vessel.
+2. Transporting activity - The subsample is transferred from the
+marine station to a genomics facility.
+3. Acquiring activity - The genomics facility receives the subsample.
+11. https://www.yokogawa.com/solutions/products-and-services/
+life-science/flowcam-flow-imaging-microscopy/#Overview
+42
+5. Application of the Library to EMBRC Data
+4. Storing activity 2 - The subsample is stored at the genomics
+facility.
+5. Multiple material processing activities - The subsample is
+processed in multiple different ways, producing raw digital
+sequences.
+6. Data processing activity - The raw digital sequences are filtered by removing unwanted clusters and resulting in the final
+sequences.
+5.2 Transformation of the provenance information
+The provenance information have been provided in three different
+formats: plain text, Ecological Metadata Language (EML)12, and JSONLD. For the purposes of this work, only the JSON-LD files are relevant.
+These files are RDF-formatted and use the PROV-O [21] statement
+definitions, however, they do not conform to the PROV JSON-LD
+schema [8], and therefore require transformation. To address this,
+an automated converter was implemented to perform the following
+schema-specific modifications:
+• Context Replacement: The original JSON-LD files use a custom
+context. To apply the PROV JSON-LD context, the Titanium
+JSON-LD13 library was used to perform these operations:
+– The expand operation to remove the original context
+– The compact operation to apply the PROV context
+• Duplicate Relation Removal: In PROV-O [21], wasAssociatedWith and qualifiedAssociation provide different levels of
+granularity. WasAssociatedWith represents only the binary relation itself and does not support additional attributes such as
+prov:role or prov:label, whereas qualifiedAssociation allows
+such additional information. However, in PROV JSON-LD this
+distinction is not present. The same applies for wasAttributedTo
+12. https://eml.ecoinformatics.org/
+13. https://github.com/filip26/titanium-json-ld
+43
+5. Application of the Library to EMBRC Data
+and qualifiedAttribution. As a consequence, only qualifiedAttribution and qualifiedAssociation relations were kept.
+• Fixing dcat:hadRole Usage: In the provided files, the dcat:
+hadRole attribute is used to specify the role in all kinds of statements. However, according to the DCAT catalogue [22], this
+attribute is to be used only with attribution relations. Therefore, dcat:hadRole is replaced with the role property for all
+relevant statements, excluding attribution. This aligns with the
+PROV JSON-LD specification where role is defined as a JSON
+property corresponding to the prov:role attribute.
+• Unnesting Elements: PROV JSON-LD does not support nested
+structures in JSON objects. Nested relations and embedded
+elements are therefore extracted and converted into stand-alone
+JSON objects.
+• Identifier Generation: Not all elements in the original files included identifiers. Since identifiers in elements are mandatory,
+missing ones were generated by SHA-256 hashing of the corresponding nodes and multiple occurrences of identical nodes
+were removed.
+• Namespace Inference: Some identifiers were provided as IRIs
+instead of qualified names. These IRIs were converted to qualified names, and the derived namespaces were added to the
+context declaration.
+• Miscellaneous Changes:
+– Addition of the dcat namespace declaration
+– Renaming of the schema:startTime and schema:endTime
+attributes to prov:startTime and prov:endTime
+– Replacement of Location kind with Entity, and Person/
+Organisation kind with Agent
+– Modification of the @type and prov:type properties to
+PROV JSON-LD conventions
+– Wrapping of primitive values according to PROV JSONLD conventions
+44
+5. Application of the Library to EMBRC Data
+5.3 CPM Modelling
+The transformed provenance information described in the previous
+chapter serves as the domain-specific provenance of the final CPM bundles, with the chapter detailing only the changes required by the PROV
+JSON-LD schema. However, additional modifications were necessary
+to fully comply with the PROV standard. Specifically, the domainspecific provenance was updated by adding usage and generation
+relations between entities and activities, based on schema:object and
+schema:result attributes. Intermediate entities were also introduced
+where multiple activities worked with the same entity.
+Then, a document containing the traversal information was created,
+using the template developed in this work, and combined with the
+other document. Finally, cross-part relations were added resulting in
+a final document containing a CPM bundle.
+In all figures in this chapter, namespace prefixes, forward connector
+derivation from backward connector and most attributes in statements
+have been omitted. Moreover, statements representing tools, sites,
+and others, not necessary for visualising the general data flow, have
+also been omitted for readability. Red colour indicates statements,
+identifiers and attributes that were part of the original provenance
+information.
+5.3.1 Sampling bundle
+The sampling bundle contains the CPM provenance for Dataset 1.
+The bundle can be seen visualized in Figure 5.1. The domain-specific
+part contains the activities described in Chapter 5.1.1 and produces
+two subsamples. For each of these, an intermediate element has been
+created, referring to the stored subsample.
+In the traversal information part of the sampling bundle, two forward connectors are generated by the main activity representing the
+two stored subsamples produced from sampling, StoredSampleCon_r1
+and StoredSampleCon_r2_3um. The specialisation of the first subsample connector, StoredSampleCon_r1_Spec, contains a reference to the
+bundle containing provenance for Dataset 2, processing. The specialisation of the derived connector from StoredSampleCon_r1, IdentifiedSpeciesConSpec, contains a reference to the bundle containing prove45
+5. Application of the Library to EMBRC Data
+nance for Dataset 3, species identification. Both of these specialisations
+are attributed to the NiceMarineStation receiver agent.
+The specialisation of the second subsample connector, StoredSampleCon_r2_3um_Spec, contains a reference to the bundle containing
+provenance for Dataset 4, DNA sequencing. This specialisation is
+attributed to the SequencingIsUsHQ receiver agent.
+Figure 5.1: CPM provenance information of Dataset 1
+46
+5. Application of the Library to EMBRC Data
+5.3.2 Processing bundle
+The processing bundle contains the CPM provenance for Dataset 2.
+The bundle can be seen visualized in Figure 5.2. The domain-specific
+part contains the activity described in Chapter 5.1.2. In the traversal
+information part of the processing bundle, the StoredSampleCon_r1
+backward connector contains a reference to the bundle containing
+provenance for Dataset 1, sampling. The specialisation of the forward
+connector, ProcessedSampleConSpec, contains reference to the bundle
+containing provenance for Dataset 3, species identification. Both the
+sender agent of the backward connector and the receiver agent of the
+forward connector’s specialisation is NiceMarineStation.
+Figure 5.2: CPM provenance information of Dataset 2
+5.3.3 Species identification bundle
+The species identification bundle contains the CPM provenance for
+Dataset 3. The bundle can be seen visualized in Figure 5.3. The domainspecific provenance contains the activity described in Chapter 5.1.3.
+In the traversal information part of the species identification bundle, the StoredSampleCon_r1 backward connector contains a reference to the bundle containing provenance for Dataset 1, sampling,
+and the ProcessedSampleCon backward connector contains a reference to the bundle containing provenance for Dataset 2, processing.
+47
+5. Application of the Library to EMBRC Data
+Both backward connectors are attributed to the same sender agent,
+NiceMarineStation.
+Figure 5.3: CPM provenance information of Dataset 3
+5.3.4 DNA sequencing bundle
+The DNA sequencing bundle contains the CPM provenance for Dataset
+4. The bundle can be seen visualized in Figure 5.4. The R2_3UM in
+domain-specific provenance stands for BigProject_belgium_water_10m_
+1000um_r2_3um in the actual provenance information and was used
+to improve readability.
+The domain-specific part contains the activities described in Chapter 5.1.4 and processes the second subsample. For the storage, acquisition and transport of the subsample, intermediate entities have been
+created. Furthermore, the output of the material and data processing
+activities had the description of the output as an attribute and so, two
+entities representing the raw and filtered digital sequences were created. In the traversal information part of the DNA sequencing bundle,
+the StoredSampleCon_r2_3um connector contains a reference to the
+bundle containing provenance for Dataset 1, sampling. The connector
+is attributed to NiceMarineStation sender agent.
+48
+5. Application of the Library to EMBRC Data
+Figure 5.4: CPM provenance information of Dataset 4
+5.4 Persistence of the documents
+As a part of a master’s thesis by David Gajdoš [19], a Provenance
+Storage service has been implemented for managing provenance documents. The service was built on top of the PROV Python package [13].
+The bundles about EMBRC datasets described previously, each contained in a separate PROV document, were attempted to be stored in
+this service in both the PROV-JSON [7] and PROV-XML [6] formats.
+Even though both ProvToolBox and PROV Python package support
+official PROV file formats, the documents generated by them are not
+always compatible, analysed in detail by Matúš Formánek as part of
+49
+5. Application of the Library to EMBRC Data
+his Bachelor’s thesis [23]. In addition to some of the issues described in
+his work, several additional problems needed to be addressed, caused
+by both the PROV Python package and the requirements of the service,
+with their description following.
+5.4.1 Incompatibilities between ProvToolBox and PROV Python
+Blank namespace prefix
+The original provenance information provided by EMBRC uses a blank
+("_") namespace prefix without associating it with a namespace. While
+ProvToolBox was able to work with this prefix by manual association
+of the https://openprovenance.org/blank# namespace with the "_"
+prefix, the Provenance Storage service was unable to deserialise PROVJSON documents with this prefix whatsoever in the PROV-JSON format. Documents in the PROV-XML format were deserialisable by the
+service, but they weren’t serialisable back into PROV-JSON by the
+service and as such this was not a proper fix. The solution was to
+replace the "_" prefix with a "blank" prefix in all of its occurrences.
+Inconsistent Bundle Identifier Handling in PROV-JSON
+In PROV-JSON serialisation by ProvToolBox, the bundle identifier
+is added as an @id property inside the bundle. This is not defined
+in the official PROV-JSON schema14 and as such, the PROV Python
+package was unable to deserialise such documents. The solution was
+to manually remove this property after serialisation. An issue on the
+ProvToolBox Github has been opened addressing this problem15
+.
+5.4.2 Requirements by the Provenance Storage service
+The provenance storage defines constrains on the documents that
+are stored in it, described in Chapter 3.2.1 of the Master’s thesis by
+Gajdoš [19]. As noted in Chapter 5 of said thesis, it would be beneficial
+for these constraints to be handled on behalf of the Provenance Storage
+user, but as of writing of this thesis, this functionality has not been
+implemented.
+14. https://www.w3.org/submissions/prov-json/schema
+15. https://github.com/lucmoreau/ProvToolbox/issues/222
+50
+5. Application of the Library to EMBRC Data
+Storage and Meta namespace IRIs
+When document is uploaded to the service, the namespace IRI of the
+bundle’s identifier, and consequently the namespace IRI of the identifiers in referencedBundleId attributes in connectors, must match a
+specific format to support the lookup of the bundle. The host in the
+IRI must be the host of the service and an identifier of an organisation to which the document belongs must also be present. Furthermore, the namespace IRI of the meta bundle’s identifier, present in
+the referencedMetaBundleId attribute in the main activity, is also required to match a specific format, with the host also corresponding to
+the service’s host.
+As both IRIs were unknown at the creation of the documents, the
+associated namespace IRIs were required to be modified before the
+documents were uploaded to the service.
+Resolvability of referenced bundles
+When documents are uploaded to the service, all referenced bundles
+must be resolvable at the time of upload. Since the bundles for datasets
+1 and 2 reference forthcoming bundles, they were required to be split
+into two versions, V0 and V1. This is because the forthcoming bundles would be required to be already present in the service, which is
+impossible, as they contain references to the preceding bundles.
+Therefore, the V0 versions exclude forward connector specialisations referencing the forthcoming bundles. For consistency, the bundles for datasets 3 and 4, that do not reference forthcoming bundles,
+are also treated as V0 versions. The correct upload sequence is to
+submit all documents containing V0 bundles first, followed by the V1
+versions for datasets 1 and 2, respectively.
+The V0 versions use bundle identifiers with the suffix _V0, while
+the V1 versions use suffix _V1. While the service does not enforce
+a version naming convention, the chosen approach aligns with the
+versioning shown in Figure 1.4.
+Referenced bundle hash value
+When referencing another bundle in a connector, the referencedBundleHashValue and hashAlg attributes must be set to a hash of the
+51
+5. Application of the Library to EMBRC Data
+referenced bundle. As a hashing algorithm, SHA-256 has been chosen.
+The files have been uploaded to the service using a python script and
+as such, the consistency between hashes generated in Java and Python
+must be considered. To achieve this, the Python script must open files
+using the following function call:
+open(filename, encoding="utf−8", newline="")
+This corresponds to Java’s default behaviour when processing files
+and avoids differences caused by Python’s newline normalization
+and defaulting to underlying operating system’s file encoding, which
+would result in mismatched hashes.
+52
+Conclusion
+The goal of this thesis was to design and develop a reference implementation of the Common Provenance Model (CPM). The functionalities
+of the library should have included creation of CPM bundles using
+templates, representation of these bundles in-memory as traversable
+graph, complete editability of these bundles, and various quality-oflife functionalities to support working with CPM.
+All specified goals of this thesis have been accomplished. A library
+has been created as an extension of an existing library, similarly to
+how CPM is an extension of the PROV Data Model. Furthermore, the
+functionalities of the library have been successfully demonstrated on
+data provided by MMCI and EMBRC.
+The creation of the reference implementation has already identified an issue in the latest specification of the CPM, namely the need to
+differentiate specialisations of forward connectors between traversal
+information and domain-specific provenance, as mentioned in Chapter 3.3. At the time of writing, a revision of the CPM has not yet been
+finalized.
+There are several areas in which the library developed in this
+work could improve. First, a validator for CPM constraints in traversal
+information could be useful. Second, currently there is no support for
+versioning of the CPM specification. Since CPM bundles will be stored
+long term, such a concept could prove essential, allowing seamless
+future changes to the model. Open questions include: how to specify
+the version of the CPM specification in the template, whether to persist
+the version in the CPM bundle or its meta-provenance, and how to
+identify relevant traversal information algorithm, as it might change
+in the future, as touched upon in Chapter 3.3.
+Introducing a new module to the library containing a validator for
+the Provenance Storage service requirements described in Chapter 5.4
+and a fully realised, properly tested converter would reduce the effort
+needed to persist documents in the service. The work done in this area
+in this thesis serves as a proof-of-concept, since a full realisation of
+such a module fell outside the scope of this work.
+53
+Conclusion
+In the long term, it would be beneficial to release the library in
+the Maven repository, so it can be more easily integrated by other
+developers and projects.
+54
+Bibliography
+1. MOREAU, Luc; MISSIER, Paolo, et al. The PROV data model [online]. W3C [visited on 2025-02-28]. Available from: https://www.
+w3.org/TR/prov-dm/.
+2. WITTNER, Rudolf; GALLO, Matej; FLEXIA, Francesca, et al.
+Common Provenance Framework for Multi-organizational Environments (preprint under review). Zenodo. 2024. Available from
+doi: 10.5281/zenodo.14526108.
+3. MOREAU, Luc; MISSIER, Paolo, et al. PROV-N: The Provenance
+Notation [online]. W3C [visited on 2025-03-01]. Available from:
+https://www.w3.org/TR/prov-n/.
+4. CYGANIAK, Richard; WOOD, David; LANTHALER, Markus.
+RDF 1.1 Concepts and Abstract Syntax [online]. W3C [visited on
+2025-03-07]. Available from: https://www.w3.org/TR/rdf11-
+concepts/.
+5. CHENEY, James; MISSIER, Paolo; MOREAU, Luc. Constraints
+of the PROV Data Model [online]. W3C [visited on 2025-03-01].
+Available from: https://www.w3.org/TR/prov-constraints/.
+6. MOREAU, Luc. PROV-XML: The PROV XML Schema [online].
+W3C [visited on 2025-04-28]. Available from: https://www.w3.
+org/TR/prov-xml/.
+7. HUYNH, Dong; JEWELL, Michael O.; KESHAVARZ, Amir Sezavar, et al. PROV-JSON: The PROV-JSON Serialization [online].
+W3C [visited on 2025-03-20]. Available from: https://www.w3.
+org/submissions/prov-json/.
+8. MOREAU, Luc; HUYNH, Dong. The PROV-JSONLD Serialization
+[online]. W3C [visited on 2025-03-01]. Available from: https:
+//www.w3.org/submissions/prov-jsonld/.
+9. KELLOGG, Gregg et al. JSON-LD [online]. W3C [visited on 2025-
+03-01]. Available from: https://www.w3.org/TR/json-ld11/.
+55
+BIBLIOGRAPHY
+10. MOREAU, Luc; BATLAJERY, Belfrit Victor; HUYNH, Dong; MICHAELIDES, Danius; PACKER, Heather. A Templating System
+to Generate Provenance. IEEE Transactions on Software Engineering.
+2018, vol. 44, no. 2, pp. 103–121. Available from doi: 10.1109/
+TSE.2017.2659745.
+11. MOREAU, Luc. ProvToolbox — Java library to create and convert W3C
+PROV data model representations [online]. [visited on 2025-03-02].
+Available from: https://lucmoreau.github.io/ProvToolbox/.
+12. GAMMA, Erich; HELM, Richard; JOHNSON, Ralph; VLISSIDES,
+John. Design Patterns: Elements of Reusable Object-Oriented Software.
+Addison-Wesley Professional, 1994. isbn 0201633612.
+13. HUYNH, Dong. Prov Python package [online]. [visited on 2025-
+03-08]. Available from: https : / / prov . readthedocs . io / en /
+latest/.
+14. OLEJNÍK, Roland. Implementation of a python library for provenance.
+2024. Available also from: https : / / is . muni . cz / th / bxk32 /
+?lang=en. Bachelor’s thesis. Masaryk University, Faculty of Informatics, Brno. Supervised by Rudolf WITTNER.
+15. JURKA, Vojtěch. Application of Common Provenance Model for MLFlow. 2024. Available also from: https : / / is . muni . cz / th /
+uo0m2/?lang=en. Master’s thesis. Masaryk University, Faculty of
+Informatics, Brno. Supervised by Rudolf WITTNER.
+16. KOŇÁR, Šimon. Application for harmonising health data sets into
+HL7 FHIR. 2025. Available also from: https://is.muni.cz/th/
+dk03g/?lang=en. Master’s thesis. Masaryk University, Faculty of
+Informatics, Brno. Supervised by Zdenka DUDOVÁ.
+17. WITTNER, Rudolf; GEIGER, Jörg; MÜLLER, Heimo, et al. EOSCLife Common provenance model for processing biological material, data generation and computational workflows. Zenodo. 2023.
+Available from doi: 10.5281/zenodo.8279525.
+18. EXTER, Katrina; VAN MALDEGHEM, Laurian. EMBRC Provenance Model [online]. [visited on 2025-04-19]. Available from:
+https://github.com/vliz-be-opsci/embrc-prov-model.
+56
+BIBLIOGRAPHY
+19. GAJDOŠ, David. Implementation of Integrity and Non-repudiation
+for Distributed Provenance Information. 2024. Available also from:
+https : / / is . muni . cz / th / mo8f1/. Master’s thesis. Masaryk
+University, Faculty of Informatics, Brno. Supervised by Rudolf
+WITTNER.
+20. EXTER, Katrina; VAN MALDEGHEM, Laurian. EMBRC reference
+implementation for provenance of biological material, observations, and
+data [online]. 2025. Version 1.0 [visited on 2025-04-19]. Available
+from: https : / / github . com / vliz - be - opsci / embrc - prov -
+model / blob / main / docs / ProvenanceOfBiologicalMaterial _
+main.pdf.
+21. LEBO, Timothy; SAHOO, Satya; MCGUINNESS, Deborah. PROVO: The PROV Ontology [online]. W3C [visited on 2025-03-02].
+Available from: https://www.w3.org/TR/prov-o/.
+22. LEBO, Timothy; SAHOO, Satya; MCGUINNESS, Deborah. Data
+Catalog Vocabulary (DCAT): HadRole Relationship [online]. W3C
+[visited on 2025-04-23]. Available from: https://www.w3.org/
+TR/vocab-dcat-3/#Property:relationship_hadRole.
+23. FORMÁNEK, Matúš. Compatibility evaluation of PROV-DM implementations. 2024. Available also from: https://is.muni.cz/th/
+hi60s/. Bachelor’s thesis. Masaryk University, Faculty of Informatics, Brno. Supervised by Rudolf WITTNER.
+57
+A Organization of the electronic archive
+The electronic archive that is part of this thesis is available at the
+university website16 and has the following structure:
+cpm/
+cpm-core
+cpm-template
+mmci/
+acquisition/
+storage/
+embrc/
+dataset1/
+dataset2/
+dataset3/
+dataset4/
+template_schema.json
+The cpm folder contains the reference implementation, with all
+it’s modules, described in detail in Chapter 3.1. The library is also
+available in an associated Github repository17
+.
+The mmci folder contains the PROV documents in PROV-N format, with each CPM bundle described in Chapter 4 in a separate document. Documents with acquisition bundles are under the acquisition
+folder, while those with storage bundles are under the storage folder.
+The embrc folder contains the Provenance Storage compatible
+PROV documents about EMBRC datasets in PROV-JSON format, as
+described in Chapter 5.4. Each CPM bundle is in a separate document.
+As described in the Chapter 5.4.2, the host in the meta and storage
+namespace IRIs must match the host of the provenance storage service.
+To generate files for a different provenance storage instance, refer to
+class CpmEmbrcTest and method setNs in class EmbrcProvStorageTransformer in tests of the cpm-template module of the library.
+The template_schema.json is the full JSON schema for the template mechanism developed in this work.
+16. https://is.muni.cz/auth/th/sv0z0/
+17. https://github.com/dwwop/cpm
+58
+B Mapping of requirements to CpmDocument
+functionalities
+In this appendix, the mapping of requirements no. 3 and no. 6 with
+all its sub-requirements defined in Chapter 2.1 to functionalities in the
+CpmDocument class is presented.
+B.1 Requirement 3 - Mutability
+As the CpmDocument implements the StatementAction interface, addition of all kinds of statements is supported by the methods defined by
+this interface.
+Removal of nodes, including removal of all references of said node
+in other components, is implemented by these methods:
+• removeNode(QualifiedName id, [Kind kind])
+– returns true, if the node containing an element with the
+given id, and optionally Kind, is successfully removed.
+– returns false, if no node of specified id, or optionally Kind,
+is found or if multiple nodes of different kinds are associated with the given ID if Kind is not specified.
+• removeElement(Element element)
+– returns true, if the element is successfully removed from
+the corresponding node.
+∗ If the element is the last one in the node, the whole
+node is removed.
+– returns false, if no node containing the element using
+identity-based (==) comparison is found.
+• removeNodes(QualifiedName id)
+– returns true, if all nodes containing an element with the
+given id are successfully removed.
+– returns false if no such node exists.
+59
+B. Mapping of requirements to CpmDocument functionalities
+Removal of Edges, including removal of all references of said edge,
+is implemented by these methods:
+• removeEdge(QualifiedName id, [Kind kind]) /
+removeEdge(QualifiedName effect, QualifiedName cause, [Kind
+kind])
+– returns true, if a singular edge with the given id or effect
+and cause, and optionally Kind, is successfully removed.
+– returns false, if no edges with the given id or effect and
+cause is found.
+– throws Exception if multiple edges are associated with
+the given ID or given effect and cause, and optionally Kind.
+• removeRelation(Relation relation)
+– returns true, if the relation is successfully removed from
+all edges containing it.
+∗ If the relation is the last one in the edge, the whole
+edge is removed.
+– returns false, if no node containing the element using
+identity-based (==) comparison is found.
+• removeEdges(QualifiedName id, [Kind kind]) /
+removeEdges(QualifiedName effect, QualifiedName cause, [Kind
+kind])
+– returns true, if all edges with the given id or effect and
+cause, and optionally Kind, are successfully removed.
+– returns false, if no edges with the given id or effect and
+cause, and optionally Kind, is found.
+Mutability of the underlying statements in graph components is
+supported by what is natively allowed by the ProvToolBox library. This
+includes mutability of all parts of the statements, with the exception of
+mutating QualifiedName objects, as these are immutable. To change a
+QualifiedName object, it must be replaced by a new object, with the
+values changed.
+60
+B. Mapping of requirements to CpmDocument functionalities
+Changing the identifier of the bundle is supported by the setBundleId(QualifiedName id) method. Changing identifiers in elements
+and cause and effect identifiers in relations needs to be done using
+methods defined in CpmDocument, otherwise the internal structures
+won’t be updated. These methods are defined to allow this functionality:
+• setNewNodeIdentifier(QualifiedName oldIdentifier, Kind
+kind, QualifiedName newIdentifier)
+– updates the identifier in all elements in the corresponding
+node.
+• setNewElementIdentifier(Element element, QualifiedName
+newIdentifier)
+– updates the identifier in the corresponding element using
+identity-based (==) comparison.
+• setNewCauseAndEffect(QualifiedName oldEffect, QualifiedName oldCause, Kind kind, QualifiedName newEffect,
+QualifiedName newCause)
+– updates the effect and cause in all relations in all matching
+edges.
+– throws Exception if the method is called for Membership
+• setNewCauseAndEffect(Relation relation, QualifiedName
+newEffect, QualifiedName newCause)
+– updates the effect and cause in the corresponding relation
+using identity-based (==) comparison.
+– throws Exception if the method is called for Membership
+relation
+• setCollectionMembers(QualifiedName oldCollectionId,
+List<QualifiedName> oldMembers, QualifiedName newCollectionId, List<QualifiedName> newMembers)
+– updates the membership relation in all edges.
+61
+B. Mapping of requirements to CpmDocument functionalities
+B.2 Requirement 6.1 - Retrieve elements
+These methods, supporting fast lookup by utilizing the nodes map,
+are defined:
+• getNode(QualifiedName id, [Kind kind])
+– returns the node containing the element with the given id
+and optionally Kind.
+– returns null if no such node exists.
+– throws Exception if multiple nodes of different Kinds are
+associated with the given ID (if Kind is not specified).
+• getNode(Element element)
+– returns the node containing the element using identitybased (==) comparison.
+– returns null if no such node exists.
+• getNodes(QualifiedName id)
+– returns list of nodes with the given id.
+– returns empty list if no such node exists.
+B.3 Requirement 6.2 - Retrieve Relation
+These methods, traversing edges list, are defined:
+• getEdge(QualifiedName id, [Kind kind]) /
+getEdge(QualifiedName effect, QualifiedName cause, [Kind
+kind])
+– returns the edge containing the relation with the given id
+or effect and cause and optionally Kind.
+– returns null if no such edge exists.
+– throws Exception if multiple edges are associated with
+the given ID or effect and cause and optionally Kind.
+62
+B. Mapping of requirements to CpmDocument functionalities
+• getEdges(Relation relation)
+– returns list of edges containing the relation using identitybased (==) comparison.
+– returns empty list if no such edge exist.
+• getEdges(QualifiedName id, [Kind kind]) /
+getEdges(QualifiedName effect, QualifiedName cause, [Kind
+kind])
+– returns list of edges containing relations with the given id
+or effect and cause and optionally Kind.
+– returns empty list if no such edge exist.
+B.4 Requirement 6.3 - Retrieve main activity
+One method, utilizing the Traversal Information Algorithm, is defined:
+• getMainActivity()
+– returns first node that is part of traversal information and
+has subtype cpm:MainActivity.
+– returns null if no such node exists.
+B.5 Requirement 6.4 and 6.5 - Retrieve connectors
+Two methods that use the same generalized private method to check
+each node in CpmDocument while applying the Traversal Information
+Algorithm, are defined:
+• getForwardConnectors() / getBackwardConnectors()
+– returns list of nodes, belonging to traversal information
+part that have subtype cpm:forwardConnector or cpm:backwardConnector.
+– returns empty list if no such nodes exists.
+63
+B. Mapping of requirements to CpmDocument functionalities
+B.6 Requirements 6.6 and 6.7 - Retrieve preceding and
+successive connectors
+Precursors are defined as connectors from which the specified connector is derived, along with their own predecessors, and so on. Successive
+connectors are defined as direct derivations of the specified connector,
+along with their own derivations, and so on.
+Two methods, using the Traversal Information Algorithm, are specified to retrieve these connectors, with outputs as follows:
+• getPrecursors(QualifiedName id) /
+getSuccessors(QualifiedName id)
+– returns list of precursors or successors of the connector.
+– returns empty list, if the connector does not have any precursors or successors.
+– returns null, if a node with the specified id does not exist
+or if it is not a connector.
+Both methods use the same generalized private method to retrieve
+the connectors using breadth-first search, as shown in Listing B.1.
+private List<INode> getRelatedConnectors(QualifiedName id, Function<IEdge, INode>
+extractNode, Function<INode, List<IEdge>> extractEdges) {
+INode node = getNode(id, Kind.PROV_ENTITY);
+if (!CpmUtilities.isConnector(node) || !tiStrategy.belongsToTraversalInformation(node)) {
+return null;
+}
+List<INode> result = new ArrayList<>();
+List<INode> toProcess = new ArrayList<>(extractEdges.apply(node).stream()
+.map(extractNode)
+.toList());
+while (!toProcess.isEmpty()) {
+INode current = toProcess.removeFirst();
+result.add(current);
+toProcess.addAll(extractEdges.apply(current).stream()
+.filter(e −> Kind.PROV_DERIVATION.equals(e.getKind()))
+.map(extractNode)
+.filter(n −> node != n && !result.contains(n) &&
+CpmUtilities.isConnector(n) &&
+tiStrategy.belongsToTraversalInformation(node))
+.toList());
+}
+return result;
+}
+64
+B. Mapping of requirements to CpmDocument functionalities
+public List<INode> getPrecursors(QualifiedName id) {
+return getRelatedConnectors(id, IEdge::getEffect, INode::getCauseEdges);
+}
+public List<INode> getSuccessors(QualifiedName id) {
+return getRelatedConnectors(id, IEdge::getCause, INode::getEffectEdges);
+}
+Listing B.1: Retrieval of precursors and successors
+B.7 Requirements 6.8 and 6.9 - Retrieve TI and DS as a
+traversable sub-graph
+Two methods, utilizing the same generalized private method, returning list of nodes satisfying the condition are defined:
+• getTraversalInformationPart() /
+getDomainSpecificPart()
+– returns list of deep-cloned nodes of the given part, containing references to edges only between other nodes within
+the same part.
+To create a traversable sub-graph, each node and edge needs to be
+essentially deep-cloned. The whole process, shown in Listing B.2 is
+described as follows.
+To minimize redundant computations, first a map of original nodes
+to cloned nodes is created, filtered by the Traversal Information Algorithm. Then all edges that are between nodes present in the map are
+retrieved. Edges that are not fully mapped, e.g. they are missing cause
+or effect node, are ignored, as the filter that checks their presence in
+clonedNodeMap will simply return false. Lastly for each edge, a clone
+is created, and the cloned cause and effect nodes are set. Cloning the
+node and edge, using CpmFactory (cF) methods removes references
+to other nodes and edges. This way, no connection to the other part of
+the bundle is present in the returned sub-graph.
+65
+B. Mapping of requirements to CpmDocument functionalities
+private List<INode> getFilteredNodes(Predicate<INode> nodeFilter) {
+Map<INode, INode> clonedNodeMap = getNodes().stream()
+.filter(nodeFilter)
+.collect(Collectors.toMap(node −> node, cF::newNode));
+List<IEdge> edges = clonedNodeMap.keySet().stream()
+.flatMap(n −> n.getCauseEdges().stream()
+.filter(e −> clonedNodeMap.containsKey(e.getEffect())))
+.toList();
+for (IEdge edge : edges) {
+IEdge clonedEdge = cF.newEdge(edge);
+clonedEdge.setCause(clonedNodeMap.get(edge.getCause()));
+clonedEdge.getCause().getCauseEdges().add(clonedEdge);
+clonedEdge.setEffect(clonedNodeMap.get(edge.getEffect()));
+clonedEdge.getEffect().getEffectEdges().add(clonedEdge);
+}
+return clonedNodeMap.values().stream().toList();
+}
+public List<INode> getTraversalInformationPart() {
+return getFilteredNodes(tiStrategy::belongsToTraversalInformation);
+}
+public List<INode> getDomainSpecificPart() {
+return getFilteredNodes(Predicate.not(tiStrategy::belongsToTraversalInformation));
+}
+Listing B.2: Retrieval of sub-graphs
+B.8 Requirement 6.10 - Retrieve cross-part relations
+One method is defined, with no need for deep-cloning the components:
+• getCrossPartEdges()
+– returns list of all edges between nodes traversal information and domain-specific provenance.
+The method first creates a map of nodes to booleans, representing
+whether the node belongs to traversal information or domain-specific
+provenance. The method then checks each edge, collecting those that
+are between traversal information and domain-specific provenance.
+66
+B. Mapping of requirements to CpmDocument functionalities
+B.9 Requirement 6.11 - Recreate CPM Bundle from
+combination of all parts
+To support this functionality, a special constructor is defined that
+takes the lists of nodes, outputted by getDomainSpecificPart() and
+getTraversalInformationPart(), and the list of edges, outputted
+by getCrossPartEdges(). For each node in the two lists of nodes,
+the constructor adds the node and all edges in which the node is a
+cause. As this happens for each node, and the TI and DS methods are
+expected to return only fully mapped edges, no edges are lost. Finally
+all cross-part edges are added.
+67

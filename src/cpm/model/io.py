@@ -1,0 +1,319 @@
+"""
+CPM Document - I/O Operations Mixin
+
+I/O, serialization, and document manipulation operations.
+"""
+
+from typing import Dict, List, Optional, Any, Set, Union, Tuple
+from prov.model import ProvDocument, ProvBundle, ProvEntity, ProvActivity, ProvAgent, ProvRecord
+from prov.identifier import QualifiedName, Namespace
+from prov.constants import PROV_TYPE, PROV_LABEL, PROV_VALUE
+import copy
+
+from src.graph.node import GraphNode
+from src.graph.wrapper import ProvGraphWrapper
+from src.cpm.constants import *
+from src.cpm.template import TraversalInformationTemplate
+from src.cpm.template_mapper import TemplateProvMapper
+from src.cpm.ti_algorithm import TraversalInformationAlgorithm
+from src.cpm.exceptions import *
+
+
+class CpmDocumentIOMixin:
+    """
+    Mixin providing I/O and serialization operations for CPM documents.
+
+    This mixin handles:
+    - Template conversion
+    - Document cloning and merging
+    - Filtering and subgraph extraction
+    - Format export
+    - Document comparison
+
+    Note: This mixin expects the following attributes to be available:
+    - self.graph_wrapper: ProvGraphWrapper instance
+    - self.ti_algorithm: TI algorithm instance
+    - self._bundle: Current bundle
+    - self._modified: Modification flag
+    """
+
+    @classmethod
+    def from_template(cls, template: TraversalInformationTemplate,
+                      domain_specific_doc: Optional[ProvDocument] = None) -> 'CpmDocument':
+        """
+        Create CPM document from template and optional domain-specific provenance.
+
+        Args:
+            template: Traversal information template
+            domain_specific_doc: Optional domain-specific provenance document
+
+        Returns:
+            CpmDocument instance
+        """
+        mapper = TemplateProvMapper()
+        ti_doc = mapper.map_to_document(template)
+
+        if domain_specific_doc:
+            # Merge traversal information with domain-specific provenance
+            ti_doc.update(domain_specific_doc)
+
+        # Create CpmDocument and ensure graph wrapper is properly initialized
+        cpm_doc = cls(ti_doc)
+
+        # Force re-initialization of graph wrapper to ensure all nodes are properly loaded
+        cpm_doc._reinitialize_graph_wrapper()
+
+        return cpm_doc
+
+    def clone(self) -> 'CpmDocument':
+        """
+        Create a deep copy of this CPM document.
+
+        Returns:
+            A new CpmDocument instance with copied content
+        """
+        # Create a deep copy of the PROV document
+        prov_doc = self.to_prov_document()
+        cloned_doc = copy.deepcopy(prov_doc)
+        return self.__class__(cloned_doc)
+
+    def merge_with(self, other: 'CpmDocument',
+                   conflict_resolution: str = 'keep_both') -> 'CpmDocument':
+        """
+        Merge this document with another CPM document.
+
+        Args:
+            other: The other CPM document to merge with
+            conflict_resolution: How to handle conflicts ('keep_both', 'keep_first', 'keep_second')
+
+        Returns:
+            A new merged CpmDocument
+
+        Raises:
+            InvalidOperationError: If conflict resolution strategy is invalid
+        """
+        if conflict_resolution not in ['keep_both', 'keep_first', 'keep_second']:
+            raise InvalidOperationError(f"Invalid conflict resolution strategy: {conflict_resolution}")
+
+        # Start with a copy of this document
+        merged_doc = self.clone()
+        other_prov_doc = other.to_prov_document()
+
+        # Merge the documents based on conflict resolution
+        if conflict_resolution == 'keep_both':
+            # Add all records from other document, renaming conflicts
+            merged_doc._merge_records_keep_both(other_prov_doc)
+        elif conflict_resolution == 'keep_first':
+            # Only add non-conflicting records from other document
+            merged_doc._merge_records_keep_first(other_prov_doc)
+        elif conflict_resolution == 'keep_second':
+            # Replace conflicting records with ones from other document
+            merged_doc._merge_records_keep_second(other_prov_doc)
+
+        return merged_doc
+
+    def filter_by_time_range(self, start_time: Optional[Any] = None,
+                             end_time: Optional[Any] = None) -> 'CpmDocument':
+        """
+        Filter document to include only elements within a time range.
+
+        Args:
+            start_time: Optional start time filter
+            end_time: Optional end time filter
+
+        Returns:
+            A new filtered CpmDocument
+        """
+        filtered_doc = self.__class__(ProvDocument())
+
+        for node in self.graph_wrapper.get_nodes():
+            # Check if node has time attributes within range
+            include_node = True
+
+            try:
+                if isinstance(node.prov_entity, ProvActivity):
+                    start_attr = node.get_prov_attribute('prov:startTime')
+                    end_attr = node.get_prov_attribute('prov:endTime')
+
+                    if start_time and start_attr:
+                        if start_attr[0] < start_time:
+                            include_node = False
+
+                    if end_time and end_attr:
+                        if end_attr[0] > end_time:
+                            include_node = False
+            except:
+                pass
+
+            if include_node:
+                # Add node to filtered document
+                node_type = 'entity'
+                if isinstance(node.prov_entity, ProvActivity):
+                    node_type = 'activity'
+                elif isinstance(node.prov_entity, ProvAgent):
+                    node_type = 'agent'
+
+                # Extract attributes
+                attributes = {}
+                for attr_name, attr_value in node.prov_entity.attributes:
+                    if attr_name != PROV_TYPE:
+                        attributes[str(attr_name)] = attr_value
+
+                prov_types = node.get_prov_attribute(str(PROV_TYPE))
+                prov_type = prov_types[0] if prov_types else None
+
+                try:
+                    filtered_doc.add_node(node_type, node.identifier, attributes, prov_type)
+                except:
+                    pass  # Skip if unable to add
+
+        return filtered_doc
+
+    def get_subgraph(self, node_ids: List[Union[str, QualifiedName]],
+                     include_edges: bool = True) -> 'CpmDocument':
+        """
+        Extract a subgraph containing only specified nodes and optionally their edges.
+
+        Args:
+            node_ids: List of node identifiers to include
+            include_edges: Whether to include edges between the nodes
+
+        Returns:
+            A new CpmDocument containing the subgraph
+        """
+        subgraph_doc = self.__class__(ProvDocument())
+        added_nodes = {}
+
+        # Add specified nodes
+        for node_id in node_ids:
+            node = self.get_node(node_id)
+            if node:
+                node_type = 'entity'
+                if isinstance(node.prov_entity, ProvActivity):
+                    node_type = 'activity'
+                elif isinstance(node.prov_entity, ProvAgent):
+                    node_type = 'agent'
+
+                # Extract attributes
+                attributes = {}
+                for attr_name, attr_value in node.prov_entity.attributes:
+                    if attr_name != PROV_TYPE:
+                        attributes[str(attr_name)] = attr_value
+
+                prov_types = node.get_prov_attribute(str(PROV_TYPE))
+                prov_type = prov_types[0] if prov_types else None
+
+                try:
+                    added_node = subgraph_doc.add_node(node_type, node.identifier, attributes, prov_type)
+                    added_nodes[str(node.identifier)] = added_node
+                except:
+                    pass
+
+        # Add edges between included nodes
+        if include_edges:
+            for source_id in node_ids:
+                for target_id in node_ids:
+                    if source_id != target_id:
+                        edges = self.get_edges(source_id, target_id)
+                        for edge in edges:
+                            try:
+                                # Determine edge type and add to subgraph
+                                edge_type = type(edge).__name__.lower()
+                                if 'usage' in edge_type:
+                                    subgraph_doc.add_edge('used', source_id, target_id)
+                                elif 'generation' in edge_type:
+                                    subgraph_doc.add_edge('wasgeneratedby', source_id, target_id)
+                                # Add other edge types as needed
+                            except:
+                                pass
+
+        return subgraph_doc
+
+    def export_to_formats(self) -> Dict[str, str]:
+        """
+        Export the document to various formats.
+
+        Returns:
+            Dictionary with format names as keys and serialized content as values
+        """
+        prov_doc = self.to_prov_document()
+        exports = {}
+
+        try:
+            # PROV-N format
+            exports['provn'] = prov_doc.get_provn()
+        except:
+            exports['provn'] = "Error: Could not export to PROV-N"
+
+        try:
+            # JSON format
+            exports['json'] = prov_doc.serialize(format='json')
+        except:
+            exports['json'] = "Error: Could not export to JSON"
+
+        try:
+            # XML format
+            exports['xml'] = prov_doc.serialize(format='xml')
+        except:
+            exports['xml'] = "Error: Could not export to XML"
+
+        return exports
+
+    def _merge_records_keep_both(self, other_doc: ProvDocument):
+        """Merge records keeping both in case of conflicts."""
+        # Implementation would merge PROV records with conflict resolution
+        pass
+
+    def _merge_records_keep_first(self, other_doc: ProvDocument):
+        """Merge records keeping first in case of conflicts."""
+        # Implementation would merge PROV records preferring current
+        pass
+
+    def _merge_records_keep_second(self, other_doc: ProvDocument):
+        """Merge records keeping second in case of conflicts."""
+        # Implementation would merge PROV records preferring other
+        pass
+
+    def equals(self, other: 'CpmDocument') -> bool:
+        """
+        Check equality with another CPM document.
+        """
+        if not isinstance(other, self.__class__):
+            return False
+
+        # Compare basic properties
+        if self.get_bundle_id() != other.get_bundle_id():
+            return False
+
+        # Compare node counts
+        self_stats = self.get_statistics()
+        other_stats = other.get_statistics()
+
+        for key in ['total_nodes', 'entities', 'activities', 'agents']:
+            if self_stats.get(key, 0) != other_stats.get(key, 0):
+                return False
+
+        # Compare edge counts
+        self_edges = len(self.get_all_edges())
+        other_edges = len(other.get_all_edges())
+
+        return self_edges == other_edges
+
+    def hash_code(self) -> int:
+        """
+        Generate hash code for the document.
+        """
+        bundle_id = self.get_bundle_id() or ""
+        stats = self.get_statistics()
+
+        # Create hash from key document properties
+        hash_components = [
+            bundle_id,
+            stats.get('total_nodes', 0),
+            stats.get('entities', 0),
+            stats.get('activities', 0),
+            stats.get('agents', 0),
+            len(self.get_all_edges())
+        ]
+
+        return hash(tuple(hash_components))

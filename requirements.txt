@@ -1,0 +1,14 @@
+# Core dependencies (required)
+prov>=2.0.0
+networkx>=2.5
+python-dateutil>=2.8.0
+rdflib>=6.0.0
+
+# Development dependencies
+pytest>=8.0.0
+pytest-cov>=4.0.0
+
+# Optional dependencies (for full functionality)
+matplotlib>=3.3.0  # For graph visualization
+lxml>=4.6.0        # For XML/RDF processing
+jsonschema>=4.0.0  # For JSON schema validation
