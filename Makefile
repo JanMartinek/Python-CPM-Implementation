@@ -32,7 +32,7 @@ test-coverage:
 	python -m pytest tests/ --cov=src --cov-report=html --cov-report=term
 
 test-specific:
-	python -m pytest tests/test_template.py -v
+	python -m pytest tests/template/test_template.py -v
 
 examples:
 	@echo "Running basic examples..."

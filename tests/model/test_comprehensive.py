@@ -199,7 +199,7 @@ def test_performance_operations():
             try:
                 doc.add_edge('wasderivedfrom', f'perf:entity_{i+1}', f'perf:entity_{i}')
                 edge_count += 1
-            except:
+            except Exception:
                 pass
 
         stats = doc.get_statistics()

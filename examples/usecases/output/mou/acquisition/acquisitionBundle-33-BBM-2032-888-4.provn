@@ -1,0 +1,25 @@
+document
+  prefix bbmri <http://www.bbmri.cz/schemas/biobank/data#>
+  prefix cpm <https://www.commonprovenancemodel.org/cpm-namespace-v1-0/>
+  prefix pbm <http://commonprovenancemodel.org/ns/pbm/>
+  prefix dct <http://purl.org/dc/terms/>
+  
+  bundle bbmri:acquisitionBundle-33-BBM-2032-888-4
+    prefix bbmri <http://www.bbmri.cz/schemas/biobank/data#>
+    prefix cpm <https://www.commonprovenancemodel.org/cpm-namespace-v1-0/>
+    prefix dct <http://purl.org/dc/terms/>
+    prefix pbm <http://commonprovenancemodel.org/ns/pbm/>
+    
+    activity(bbmri:acquisition-33-BBM-2032-888-4, -, -, [prov:type='cpm:mainActivity', dct:hasPart='bbmri:acquisitionAct-33-BBM-2032-888-4'])
+    entity(bbmri:sampleAcqConnector-33-BBM-2032-888-4, [prov:type='cpm:forwardConnector'])
+    entity(bbmri:sampleAcqConnectorSpec-33-BBM-2032-888-4, [prov:type='cpm:forwardConnector', cpm:referencedBundleId='bbmri:storageBundle-33-BBM-2032-888-4'])
+    agent(bbmri:MOU, [prov:type='cpm:receiverAgent'])
+    entity(bbmri:sample-33-BBM-2032-888-4, [prov:type='pbm:sample', bbmri:sampleId="BBM:2032:888:4"])
+    activity(bbmri:acquisitionAct-33-BBM-2032-888-4, -, -, [prov:type='pbm:acquisitionActivity'])
+    wasGeneratedBy(bbmri:sampleAcqConnector-33-BBM-2032-888-4, bbmri:acquisition-33-BBM-2032-888-4, -)
+    specializationOf(bbmri:sampleAcqConnectorSpec-33-BBM-2032-888-4, bbmri:sampleAcqConnector-33-BBM-2032-888-4)
+    wasAttributedTo(bbmri:sampleAcqConnectorSpec-33-BBM-2032-888-4, bbmri:MOU)
+    specializationOf(bbmri:sample-33-BBM-2032-888-4, bbmri:sampleAcqConnector-33-BBM-2032-888-4)
+    wasGeneratedBy(bbmri:sample-33-BBM-2032-888-4, bbmri:acquisitionAct-33-BBM-2032-888-4, -)
+  endBundle
+endDocument

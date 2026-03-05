@@ -75,6 +75,17 @@ class GraphNode:
         return "UNKNOWN"
 
     @property
+    def node_type_name(self) -> str:
+        """Return the lowercase PROV type name: 'entity', 'activity', or 'agent'."""
+        if isinstance(self.prov_entity, ProvActivity):
+            return "activity"
+        elif isinstance(self.prov_entity, ProvAgent):
+            return "agent"
+        elif isinstance(self.prov_entity, ProvEntity):
+            return "entity"
+        return "unknown"
+
+    @property
     def id(self) -> Optional[QualifiedName]:
         return self.identifier
 
@@ -107,6 +118,7 @@ class GraphNode:
 
     def handle_duplicate(self, duplicate_element: ProvRecord):
         if hasattr(duplicate_element, 'attributes') and hasattr(self.prov_entity, 'attributes'):
+            # TODO: Merge PROV attributes from duplicate into this node
             pass
 
     def remove_element(self, element: ProvRecord) -> bool:

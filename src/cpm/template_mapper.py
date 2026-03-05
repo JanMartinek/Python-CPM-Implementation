@@ -341,7 +341,7 @@ class TemplateProvMapper:
             qname = bundle.valid_qualified_name(identifier)
             if qname is not None:
                 return qname
-        except:
+        except Exception:
             pass
 
         # If that fails, handle manually using correct PROV API

@@ -64,6 +64,7 @@ class CpmDocumentAnalysisMixin:
 
         return {
             'total_nodes': len(all_nodes),
+            'total_edges': len(self.get_edges()),
             'traversal_information_nodes': len(ti_nodes),
             'domain_specific_nodes': len(ds_nodes),
             'entities': len([n for n in all_nodes if isinstance(n.prov_entity, ProvEntity)]),

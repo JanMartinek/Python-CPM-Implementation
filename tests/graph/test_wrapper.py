@@ -438,3 +438,294 @@ class TestProvGraphWrapperSubgraph:
 
         assert len(subgraph) == len(wrapper)
         assert len(subgraph.get_edges()) == len(wrapper.get_edges())
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Additional coverage tests – relation types, helpers, subgraph, to_prov_document.
+# ═══════════════════════════════════════════════════════════════════════════════
+
+from prov.identifier import Namespace
+
+EX = Namespace("ex", "http://example.org/")
+
+
+def _make_doc_with_relations():
+    """Build a ProvDocument exercising many relation types."""
+    doc = ProvDocument()
+    doc.add_namespace(EX)
+    b = doc.bundle(EX["bundle"])
+
+    # Nodes
+    b.entity(EX["e1"])
+    b.entity(EX["e2"])
+    b.activity(EX["a1"])
+    b.agent(EX["ag1"])
+
+    # Relations
+    b.usage(EX["a1"], EX["e1"])                      # ProvUsage
+    b.wasGeneratedBy(EX["e2"], EX["a1"])              # ProvGeneration
+    b.wasDerivedFrom(EX["e2"], EX["e1"])              # ProvDerivation
+    b.wasAttributedTo(EX["e1"], EX["ag1"])            # ProvAttribution
+    b.wasAssociatedWith(EX["a1"], EX["ag1"])          # ProvAssociation
+    b.actedOnBehalfOf(EX["ag1"], EX["ag1"])           # ProvDelegation (self)
+    b.wasInformedBy(EX["a1"], EX["a1"])               # ProvCommunication (self)
+    b.wasInfluencedBy(EX["e1"], EX["e2"])             # ProvInfluence
+    b.specializationOf(EX["e1"], EX["e2"])            # ProvSpecialization
+    b.alternateOf(EX["e1"], EX["e2"])                 # ProvAlternate
+    return doc
+
+
+# ─── Import / edge creation ─────────────────────────────────────────────────
+
+class TestRelationEdgeCreation:
+    def test_usage_edge(self):
+        w = ProvGraphWrapper(_make_doc_with_relations())
+        edges = w.get_edges()
+        kinds = [e.kind for e in edges]
+        assert "PROV_USAGE" in kinds
+
+    def test_generation_edge(self):
+        w = ProvGraphWrapper(_make_doc_with_relations())
+        kinds = [e.kind for e in edges] if (edges := w.get_edges()) else []
+        assert "PROV_GENERATION" in kinds
+
+    def test_derivation_edge(self):
+        w = ProvGraphWrapper(_make_doc_with_relations())
+        kinds = [e.kind for e in w.get_edges()]
+        assert "PROV_DERIVATION" in kinds
+
+    def test_attribution_edge(self):
+        w = ProvGraphWrapper(_make_doc_with_relations())
+        kinds = [e.kind for e in w.get_edges()]
+        assert "PROV_ATTRIBUTION" in kinds
+
+    def test_association_edge(self):
+        w = ProvGraphWrapper(_make_doc_with_relations())
+        kinds = [e.kind for e in w.get_edges()]
+        assert "PROV_ASSOCIATION" in kinds
+
+    def test_delegation_edge(self):
+        w = ProvGraphWrapper(_make_doc_with_relations())
+        kinds = [e.kind for e in w.get_edges()]
+        assert "PROV_DELEGATION" in kinds
+
+    def test_communication_edge(self):
+        w = ProvGraphWrapper(_make_doc_with_relations())
+        kinds = [e.kind for e in w.get_edges()]
+        assert "PROV_COMMUNICATION" in kinds
+
+    def test_influence_edge(self):
+        w = ProvGraphWrapper(_make_doc_with_relations())
+        kinds = [e.kind for e in w.get_edges()]
+        assert "PROV_INFLUENCE" in kinds
+
+    def test_specialization_edge(self):
+        w = ProvGraphWrapper(_make_doc_with_relations())
+        kinds = [e.kind for e in w.get_edges()]
+        assert "PROV_SPECIALIZATION" in kinds
+
+    def test_alternate_edge(self):
+        w = ProvGraphWrapper(_make_doc_with_relations())
+        kinds = [e.kind for e in w.get_edges()]
+        assert "PROV_ALTERNATE" in kinds
+
+
+# ─── Node / edge accessors ──────────────────────────────────────────────────
+
+class TestAccessors:
+    def test_get_node_by_id(self):
+        w = ProvGraphWrapper(_make_doc_with_relations())
+        node = w.get_node_by_id(str(EX["e1"]))
+        assert node is not None
+
+    def test_get_node_by_id_missing(self):
+        w = ProvGraphWrapper(_make_doc_with_relations())
+        assert w.get_node_by_id("nonexistent") is None
+
+    def test_get_edge_by_id(self):
+        w = ProvGraphWrapper(_make_doc_with_relations())
+        edges = w.get_edges()
+        if edges:
+            edge = w.get_edge_by_id(edges[0].identifier if hasattr(edges[0], 'identifier') else str(edges[0].identifier))
+
+    def test_get_networkx_graph(self):
+        w = ProvGraphWrapper(_make_doc_with_relations())
+        g = w.get_networkx_graph()
+        assert g is not None
+        assert g.number_of_nodes() > 0
+
+    def test_get_neighbors(self):
+        w = ProvGraphWrapper(_make_doc_with_relations())
+        n = w.get_neighbors(str(EX["e1"]))
+        assert isinstance(n, list)
+
+    def test_get_neighbors_missing(self):
+        w = ProvGraphWrapper(_make_doc_with_relations())
+        assert w.get_neighbors("nonexistent") == []
+
+    def test_get_predecessors(self):
+        w = ProvGraphWrapper(_make_doc_with_relations())
+        p = w.get_predecessors(str(EX["e2"]))
+        assert isinstance(p, list)
+
+    def test_get_predecessors_missing(self):
+        w = ProvGraphWrapper(_make_doc_with_relations())
+        assert w.get_predecessors("nonexistent") == []
+
+    def test_get_successors(self):
+        w = ProvGraphWrapper(_make_doc_with_relations())
+        s = w.get_successors(str(EX["e1"]))
+        assert isinstance(s, list)
+
+    def test_get_successors_missing(self):
+        w = ProvGraphWrapper(_make_doc_with_relations())
+        assert w.get_successors("nonexistent") == []
+
+
+# ─── Subgraph (extended) ────────────────────────────────────────────────────
+
+class TestCreateSubgraphExtended:
+    def test_subgraph_filter(self):
+        w = ProvGraphWrapper(_make_doc_with_relations())
+        sub = w.create_subgraph(lambda n: "e1" in str(n.identifier))
+        assert isinstance(sub, ProvGraphWrapper)
+        assert len(sub.get_nodes()) >= 1
+
+    def test_subgraph_empty(self):
+        w = ProvGraphWrapper(_make_doc_with_relations())
+        sub = w.create_subgraph(lambda n: False)
+        assert len(sub.get_nodes()) == 0
+
+
+# ─── to_prov_document ───────────────────────────────────────────────────────
+
+class TestToProvDocument:
+    def test_returns_prov_document(self):
+        w = ProvGraphWrapper(_make_doc_with_relations())
+        doc = w.to_prov_document()
+        assert isinstance(doc, ProvDocument)
+
+    def test_empty_wrapper(self):
+        w = ProvGraphWrapper(ProvDocument())
+        doc = w.to_prov_document()
+        assert isinstance(doc, ProvDocument)
+
+    def test_no_bundles(self):
+        doc = ProvDocument()
+        doc.add_namespace(EX)
+        doc.entity(EX["e1"])
+        w = ProvGraphWrapper(doc)
+        out = w.to_prov_document()
+        assert isinstance(out, ProvDocument)
+
+
+# ─── Misc ────────────────────────────────────────────────────────────────────
+
+class TestWrapperMisc:
+    def test_clear(self):
+        w = ProvGraphWrapper(_make_doc_with_relations())
+        w.clear()
+        assert len(w.get_nodes()) == 0
+        assert len(w.get_edges()) == 0
+
+    def test_len(self):
+        w = ProvGraphWrapper(_make_doc_with_relations())
+        assert len(w) > 0
+
+    def test_str(self):
+        w = ProvGraphWrapper(_make_doc_with_relations())
+        s = str(w)
+        assert "ProvGraphWrapper" in s
+
+    def test_empty_wrapper(self):
+        w = ProvGraphWrapper()
+        assert len(w) == 0
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Extra tests – placeholder nodes, bundles, subgraph, accessors for missing IDs
+# ═══════════════════════════════════════════════════════════════════════════════
+
+
+class TestWrapperPlaceholderNode:
+    def test_relation_referencing_external_entity_creates_placeholder(self):
+        """When a relation references an identifier not declared in the doc,
+        _get_or_create_node creates a placeholder."""
+        doc = ProvDocument()
+        doc.add_namespace(EX)
+        doc.entity(EX["e1"])
+        doc.wasInfluencedBy(EX["e1"], EX["e2"])
+        w = ProvGraphWrapper(doc)
+        node = w.get_node_by_id(str(EX["e2"]))
+        assert node is not None
+
+
+class TestWrapperToProvDocumentBundles:
+    def test_to_prov_document_with_bundle(self):
+        doc = ProvDocument()
+        doc.add_namespace(EX)
+        bundle = doc.bundle(EX["b1"])
+        bundle.entity(EX["e1"])
+        bundle.activity(EX["a1"])
+        bundle.usage(EX["a1"], EX["e1"])
+        w = ProvGraphWrapper(doc)
+        result = w.to_prov_document()
+        assert result is not None
+        bundles = list(result.bundles)
+        assert len(bundles) >= 1
+
+    def test_to_prov_document_without_bundle(self):
+        doc = ProvDocument()
+        doc.add_namespace(EX)
+        doc.entity(EX["e1"])
+        doc.entity(EX["e2"])
+        doc.wasInfluencedBy(EX["e1"], EX["e2"])
+        w = ProvGraphWrapper(doc)
+        result = w.to_prov_document()
+        assert result is not None
+
+
+class TestWrapperCreateSubgraphExtra:
+    def test_subgraph_filters_nodes(self):
+        doc = ProvDocument()
+        doc.add_namespace(EX)
+        doc.entity(EX["e1"])
+        doc.entity(EX["e2"])
+        doc.entity(EX["e3"])
+        doc.wasInfluencedBy(EX["e1"], EX["e2"])
+        doc.wasInfluencedBy(EX["e2"], EX["e3"])
+        w = ProvGraphWrapper(doc)
+        sub = w.create_subgraph(lambda n: str(n.identifier) in [str(EX["e1"]), str(EX["e2"])])
+        assert len(sub.get_nodes()) == 2
+        assert len(sub.get_edges()) <= 1
+
+    def test_subgraph_empty_filter(self):
+        doc = ProvDocument()
+        doc.add_namespace(EX)
+        doc.entity(EX["e1"])
+        w = ProvGraphWrapper(doc)
+        sub = w.create_subgraph(lambda n: False)
+        assert len(sub.get_nodes()) == 0
+
+
+class TestWrapperAccessorsExtra:
+    def test_get_neighbors_missing(self):
+        doc = ProvDocument()
+        doc.add_namespace(EX)
+        doc.entity(EX["e1"])
+        w = ProvGraphWrapper(doc)
+        assert w.get_neighbors("missing") == []
+
+    def test_get_predecessors_missing(self):
+        doc = ProvDocument()
+        doc.add_namespace(EX)
+        doc.entity(EX["e1"])
+        w = ProvGraphWrapper(doc)
+        assert w.get_predecessors("missing") == []
+
+    def test_get_successors_missing(self):
+        doc = ProvDocument()
+        doc.add_namespace(EX)
+        doc.entity(EX["e1"])
+        w = ProvGraphWrapper(doc)
+        assert w.get_successors("missing") == []

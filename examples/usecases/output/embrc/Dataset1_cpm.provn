@@ -1,0 +1,27 @@
+document
+  prefix schema <https://schema.org/>
+  prefix cpm <https://www.commonprovenancemodel.org/cpm-namespace-v1-0/>
+  prefix sosa <http://www.w3.org/ns/sosa/>
+  prefix dct <http://purl.org/dc/terms/>
+  prefix embrc <http://embrc.eu/ns/>
+  
+  bundle embrc:Dataset1_storage
+    prefix embrc <http://embrc.eu/ns/>
+    prefix cpm <https://www.commonprovenancemodel.org/cpm-namespace-v1-0/>
+    prefix schema <https://schema.org/>
+    prefix sosa <http://www.w3.org/ns/sosa/>
+    
+    activity(embrc:dataset1_mainActivity, -, -, [prov:type='cpm:mainActivity', schema:name="Dataset 1 Processing"])
+    entity(embrc:dataset1_backwardConnector, [prov:type='cpm:backwardConnector'])
+    entity(embrc:dataset1_forwardConnector, [prov:type='cpm:forwardConnector'])
+    agent(embrc:orcid.org_0000-0001-0001-0001, [prov:type='cpm:senderAgent', schema:name="Jane Smith"])
+    agent(embrc:orcid.org_0000-0001-0001-0002, [prov:type='cpm:senderAgent', schema:name="F. Lee"])
+    entity(embrc:sample_BigProject_belgium_water_10m, [prov:type='sosa:Sample', schema:name="BigProject_belgium_water_10m", schema:description="Water sample to determine plankton community and extract DNA"])
+    entity(embrc:sample_BigProject_belgium_water_10m_1000um_r1, [prov:type='sosa:Sample', schema:name="BigProject_belgium_water_10m_1000um_r1", schema:description="water sample collected from 10m depth and filtered at 1000um"])
+    entity(embrc:sample_BigProject_belgium_water_10m_1000um_r2, [prov:type='sosa:Sample', schema:name="BigProject_belgium_water_10m_1000um_r2", schema:description="water sample collected from 10m depth and filtered at 1000um"])
+    entity(embrc:sample_BigProject_belgium_water_10m_1000um_r2_3um, [prov:type='sosa:Sample', schema:name="BigProject_belgium_water_10m_1000um_r2_3um", schema:description="water sample collected from 10m depth and filtered at 1000um and again 3um"])
+    used(embrc:dataset1_mainActivity, embrc:dataset1_backwardConnector, -)
+    wasGeneratedBy(embrc:dataset1_forwardConnector, embrc:dataset1_mainActivity, -)
+    wasDerivedFrom(embrc:dataset1_forwardConnector, embrc:dataset1_backwardConnector, -, -, -)
+  endBundle
+endDocument

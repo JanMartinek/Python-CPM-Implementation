@@ -1,0 +1,34 @@
+document
+  prefix bbmri <http://www.bbmri.cz/schemas/biobank/data#>
+  prefix cpm <https://www.commonprovenancemodel.org/cpm-namespace-v1-0/>
+  prefix pbm <http://commonprovenancemodel.org/ns/pbm/>
+  prefix dct <http://purl.org/dc/terms/>
+  
+  bundle bbmri:storageBundle-33-BBM-2032-136043
+    prefix bbmri <http://www.bbmri.cz/schemas/biobank/data#>
+    prefix cpm <https://www.commonprovenancemodel.org/cpm-namespace-v1-0/>
+    prefix dct <http://purl.org/dc/terms/>
+    prefix pbm <http://commonprovenancemodel.org/ns/pbm/>
+    
+    activity(bbmri:storage-33-BBM-2032-136043, -, -, [prov:type='cpm:mainActivity', dct:hasPart='bbmri:transport-33-BBM-2032-136043'])
+    entity(bbmri:sampleAcqConnector-33-BBM-2032-136043, [prov:type='cpm:backwardConnector', cpm:referencedBundleId='bbmri:acquisitionBundle-33-BBM-2032-136043'])
+    entity(bbmri:sampleStorConnector-33-BBM-2032-136043, [prov:type='cpm:forwardConnector'])
+    agent(bbmri:UNI, [prov:type='cpm:senderAgent'])
+    activity(bbmri:transport-33-BBM-2032-136043, -, -, [prov:type='pbm:transportActivity'])
+    entity(bbmri:sampleTrans-33-BBM-2032-136043, [prov:type='pbm:sample', bbmri:sampleId="BBM:2032:136043"])
+    activity(bbmri:storageAct-33-BBM-2032-136043, -, -, [prov:type='pbm:storageActivity'])
+    entity(bbmri:sampleStorage-33-BBM-2032-136043, [prov:type='bbmri:diagnosticMaterial', bbmri:sampleId="BBM:2032:136043", bbmri:storageType="STS", bbmri:materialType="S", bbmri:diagnosis="C509"])
+    entity(bbmri:patient-33, [prov:type='pbm:source', bbmri:sex="female", bbmri:birthYear="1999", bbmri:gaveConsent="true"])
+    used(bbmri:storage-33-BBM-2032-136043, bbmri:sampleAcqConnector-33-BBM-2032-136043, -)
+    wasGeneratedBy(bbmri:sampleStorConnector-33-BBM-2032-136043, bbmri:storage-33-BBM-2032-136043, -)
+    wasAttributedTo(bbmri:sampleAcqConnector-33-BBM-2032-136043, bbmri:UNI)
+    wasDerivedFrom(bbmri:sampleStorConnector-33-BBM-2032-136043, bbmri:sampleAcqConnector-33-BBM-2032-136043, -, -, -)
+    wasGeneratedBy(bbmri:sampleTrans-33-BBM-2032-136043, bbmri:transport-33-BBM-2032-136043, -)
+    specializationOf(bbmri:sampleTrans-33-BBM-2032-136043, bbmri:sampleAcqConnector-33-BBM-2032-136043)
+    used(bbmri:storageAct-33-BBM-2032-136043, bbmri:sampleTrans-33-BBM-2032-136043, -)
+    wasGeneratedBy(bbmri:sampleStorage-33-BBM-2032-136043, bbmri:storageAct-33-BBM-2032-136043, -)
+    specializationOf(bbmri:sampleStorage-33-BBM-2032-136043, bbmri:sampleStorConnector-33-BBM-2032-136043)
+    wasDerivedFrom(bbmri:sampleTrans-33-BBM-2032-136043, bbmri:patient-33, -, -, -)
+    wasDerivedFrom(bbmri:sampleStorage-33-BBM-2032-136043, bbmri:patient-33, -, -, -)
+  endBundle
+endDocument

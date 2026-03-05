@@ -14,20 +14,21 @@ Python implementation, including:
 
 This covers sophisticated CPM operations for complex provenance scenarios.
 """
+import sys
+import os
+
+# Add src to path for imports
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
 from src.adapters.prov_adapter import ProvAdapter
 from src.graph.edge import GraphEdge
 from src.graph.node import GraphNode
 from src.graph.wrapper import ProvGraphWrapper
 from prov.model import ProvDocument
-import sys
-import os
+
 import json
 import copy
 from typing import Dict, Any, List, Optional, Set, Tuple
-
-# Add src to path for imports
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
 
 def create_complex_prov_document() -> ProvDocument:

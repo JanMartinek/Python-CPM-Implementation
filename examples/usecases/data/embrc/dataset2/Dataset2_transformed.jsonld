@@ -1,0 +1,186 @@
+{
+  "@context" : [ {
+    "@vocab" : "http://www.w3.org/ns/prov#",
+    "sosa" : "http://www.w3.org/ns/sosa/",
+    "dct" : "http://purl.org/dc/terms/",
+    "schema" : "https://schema.org/",
+    "prov" : "http://www.w3.org/ns/prov#",
+    "_" : "https://openprovenance.org/blank#",
+    "gen" : "gen/",
+    "dcat" : "http://www.w3.org/ns/dcat#",
+    "orcid" : "https://orcid.org/",
+    "seadatanet" : "https://edmo.seadatanet.org/report/",
+    "obolibrary" : "http://purl.obolibrary.org/obo/"
+  }, "https://openprovenance.org/prov-jsonld/context.jsonld" ],
+  "@graph" : [ {
+    "@type" : "Agent",
+    "@id" : "orcid:0000-0001-0001-0002",
+    "schema:name" : [ {
+      "@value" : "J. Gerschwin"
+    } ],
+    "schema:identifier" : [ {
+      "@value" : "orcid:0000-0001-0001-0002"
+    } ],
+    "schema:email" : [ {
+      "@value" : "jg@somewhere.com"
+    } ],
+    "schema:affiliation" : [ {
+      "@value" : "seadatanet:00000"
+    } ],
+    "type" : [ "schema:Person" ]
+  }, {
+    "@type" : "Agent",
+    "@id" : "seadatanet:00000",
+    "schema:name" : [ {
+      "@value" : "Nice Marine Station"
+    } ],
+    "schema:mainEntityOfPage" : [ {
+      "@value" : "https://NiceMarineStation.eu"
+    } ],
+    "schema:email" : [ {
+      "@value" : "info@nicemarinestation.eu"
+    } ],
+    "schema:identifier" : [ {
+      "@value" : "seadatanet:00000"
+    } ],
+    "type" : [ "schema:Organization" ]
+  }, {
+    "@type" : "Entity",
+    "@id" : "_:BigProject_belgium_water_10m_1000um_r1",
+    "schema:name" : [ {
+      "@value" : "BigProject_belgium_water_10m_1000um_r1"
+    } ],
+    "schema:description" : [ {
+      "@value" : "Water sample collected from 10m depth and filtered at 1000um"
+    } ],
+    "schema:keywords" : [ "obolibrary:ENVO_00002150", "_:NCBI_txid1874687" ],
+    "type" : [ "schema:Thing", "sosa:Sample" ]
+  }, {
+    "@type" : "Entity",
+    "@id" : "_:FlowCam_seawater_sop",
+    "schema:name" : [ {
+      "@value" : "FlowCam_seawater_sop"
+    } ],
+    "schema:description" : [ {
+      "@value" : "Instructions for using FlowCam with seawater, including camera settings"
+    } ],
+    "schema:accessibilitySummary" : [ {
+      "@value" : "see file FlowCam_seawaterSOP.pdf which is part of this data package"
+    } ],
+    "type" : [ "schema:Thing", "schema:CreativeWork" ]
+  }, {
+    "@type" : "Entity",
+    "@id" : "_:VisualSpreadsheet_FlowCam",
+    "schema:name" : [ {
+      "@value" : "VisualSpreadsheet FlowCam Micro software"
+    } ],
+    "schema:description" : [ {
+      "@value" : "The software that comes with this FlowCam, bought in 2010"
+    } ],
+    "schema:accessibilitySummary" : [ {
+      "@value" : "see file flowcam-settings.txt which is part of the data package"
+    } ],
+    "type" : [ "schema:Thing", "schema:SoftwareApplication" ]
+  }, {
+    "@type" : "Entity",
+    "@id" : "_:NMS_flowcam_2010",
+    "schema:identifier" : [ {
+      "@value" : "NMS_flowcam_2010"
+    } ],
+    "schema:name" : [ {
+      "@value" : "FlowCam Micro from CoolLabInstruments Corp., 2010"
+    } ],
+    "dct:type" : [ {
+      "@value" : "https://vocab.nerc.ac.uk/collection/L05/current/LAB27"
+    } ],
+    "schema:description" : [ {
+      "@value" : "see file flowcam-settings.txt for software and hardware settings"
+    } ],
+    "type" : [ "schema:Thing" ]
+  }, {
+    "@type" : "Activity",
+    "@id" : "_:MaterialProcessing",
+    "dct:type" : [ {
+      "@value" : "Material Processing; FlowCam imaging"
+    } ],
+    "schema:object" : [ {
+      "@value" : "_:BigProject_belgium_water_10m_1000um_r1"
+    } ],
+    "schema:result" : [ {
+      "@value" : "gen:5017bc3edda5006a4c29737b48585fefdfd4ef740bed03ab10730ec86e4153d7"
+    } ],
+    "startTime" : "2021-01-01",
+    "endTime" : "2021-01-01",
+    "location" : [ {
+      "@value" : "gen:a237c6fdc6c44c8dcda8bd87bd58b4690dcf34a0cc5732a1636bb1183f448575"
+    } ],
+    "type" : [ "schema:Action" ]
+  }, {
+    "@type" : "Entity",
+    "@id" : "obolibrary:ENVO_00002150",
+    "schema:name" : [ {
+      "@value" : "coastal sea water"
+    } ],
+    "schema:termCode" : [ {
+      "@value" : "ENVO_00002150"
+    } ],
+    "type" : [ "schema:DefinedTerm" ]
+  }, {
+    "@type" : "Entity",
+    "@id" : "_:NCBI_txid1874687",
+    "schema:name" : [ {
+      "@value" : "marine plaknton metagenome"
+    } ],
+    "schema:termCode" : [ {
+      "@value" : "NCBI:txid1874687"
+    } ],
+    "type" : [ "schema:DefinedTerm" ]
+  }, {
+    "@type" : "Influence",
+    "influencer" : "_:VisualSpreadsheet_FlowCam",
+    "influencee" : "_:NMS_flowcam_2010",
+    "schema:accessibilitySummary" : [ {
+      "@value" : "see file flowcam-settings.txt for software and hardware settings"
+    } ]
+  }, {
+    "@type" : "Usage",
+    "entity" : "_:FlowCam_seawater_sop",
+    "activity" : "_:MaterialProcessing"
+  }, {
+    "@type" : "Usage",
+    "entity" : "_:NMS_flowcam_2010",
+    "activity" : "_:MaterialProcessing"
+  }, {
+    "@type" : "Association",
+    "agent" : "orcid:0000-0001-0001-0002",
+    "activity" : "_:MaterialProcessing",
+    "role" : [ {
+      "@value" : "lab technician"
+    } ]
+  }, {
+    "@type" : "Usage",
+    "entity" : "_:BigProject_belgium_water_10m_1000um_r1",
+    "activity" : "_:MaterialProcessing"
+  }, {
+    "@type" : "Entity",
+    "schema:description" : [ {
+      "@value" : "the first set of images taken by the flowcam are stored in /Users/NMSlab/flowcam/20210101/BigProject/raw"
+    } ],
+    "@id" : "gen:5017bc3edda5006a4c29737b48585fefdfd4ef740bed03ab10730ec86e4153d7",
+    "type" : [ "schema:Thing", "schema:Dataset" ]
+  }, {
+    "@type" : "Generation",
+    "activity" : "_:MaterialProcessing",
+    "entity" : "gen:5017bc3edda5006a4c29737b48585fefdfd4ef740bed03ab10730ec86e4153d7"
+  }, {
+    "@type" : "Entity",
+    "schema:name" : [ {
+      "@value" : "Nice Marine Station"
+    } ],
+    "schema:address" : [ {
+      "@value" : "NiceMarineStation Rd, Ostend, Belgium"
+    } ],
+    "@id" : "gen:a237c6fdc6c44c8dcda8bd87bd58b4690dcf34a0cc5732a1636bb1183f448575",
+    "type" : [ "schema:Place", "prov:Location" ]
+  } ]
+}

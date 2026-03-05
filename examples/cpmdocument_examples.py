@@ -276,7 +276,7 @@ def example_7_export_formats(cpm_doc: CpmDocument):
             print(f"\n2. JSON format:")
             print(f"   Size: {len(json_str)} characters")
             print(f"   First 200 chars:")
-            print(f"   {json_str[:200]}...")
+            print(f"   {json_str[:800]}...")
     except Exception as e:
         print(f"   Error serializing to JSON: {e}")
     

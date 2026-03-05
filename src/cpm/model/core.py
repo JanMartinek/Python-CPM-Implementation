@@ -47,7 +47,7 @@ class CpmDocumentCoreMixin:
                 # doc.bundles returns dict_values, so iterate to get first bundle
                 for bundle in doc.bundles:
                     return bundle
-            except:
+            except Exception:
                 pass
 
         # Fallback: try accessing as dictionary values
@@ -55,7 +55,7 @@ class CpmDocumentCoreMixin:
             try:
                 for bundle in doc.bundles.values():
                     return bundle
-            except:
+            except Exception:
                 pass
 
         # Alternative: check for bundle records directly
@@ -177,42 +177,54 @@ class CpmDocumentCoreMixin:
         try:
             prov_types = node.get_prov_attribute(str(PROV_TYPE))
             if prov_types:
-                return cpm_type in prov_types
-        except:
+                # Get the expected type as string for comparison
+                cpm_type_str = str(cpm_type).lower()
+                cpm_local_name = cpm_type.localpart.lower() if hasattr(cpm_type, 'localpart') else cpm_type_str.split(':')[-1].lower()
+
+                for ptype in prov_types:
+                    ptype_str = str(ptype).lower()
+
+                    # Direct match with QualifiedName
+                    if ptype == cpm_type:
+                        return True
+
+                    # String comparison (handles 'cpm:backwardConnector' format)
+                    if ptype_str == cpm_type_str:
+                        return True
+
+                    # Local name comparison (handles different namespace prefixes)
+                    ptype_local = ptype_str.split(':')[-1] if ':' in ptype_str else ptype_str
+                    if ptype_local == cpm_local_name:
+                        return True
+        except Exception:
             pass
         return False
 
     def _node_has_type(self, node: GraphNode, type_str: str) -> bool:
         """Check if node has specific type (by string comparison)"""
         try:
+            type_str_lower = type_str.lower()
+            # Strip 'prov:' prefix for comparison
+            type_local = type_str_lower.split(':')[-1] if ':' in type_str_lower else type_str_lower
+
             prov_types = node.get_prov_attribute(str(PROV_TYPE))
             if prov_types:
                 for ptype in prov_types:
-                    # Check both the full qualified name and just the local name
-                    type_str_normalized = type_str.lower()
                     ptype_str = str(ptype).lower()
+                    ptype_local = ptype_str.split(':')[-1] if ':' in ptype_str else ptype_str
 
-                    # Check exact match
-                    if ptype_str == type_str_normalized:
-                        return True
-
-                    # Check if it's a standard PROV type (prov:Entity, prov:Activity, prov:Agent)
-                    if type_str_normalized in ['prov:entity', 'entity'] and 'entity' in ptype_str:
-                        return True
-                    elif type_str_normalized in ['prov:activity', 'activity'] and 'activity' in ptype_str:
-                        return True
-                    elif type_str_normalized in ['prov:agent', 'agent'] and 'agent' in ptype_str:
+                    if ptype_str == type_str_lower or ptype_local == type_local:
                         return True
 
-            # Also check the actual Python type of the PROV entity
-            if type_str.lower() in ['prov:entity', 'entity'] and isinstance(node.prov_entity, ProvEntity):
+            # Fallback: check the actual Python type of the PROV record
+            if type_local == 'entity' and isinstance(node.prov_entity, ProvEntity):
                 return True
-            elif type_str.lower() in ['prov:activity', 'activity'] and isinstance(node.prov_entity, ProvActivity):
+            elif type_local == 'activity' and isinstance(node.prov_entity, ProvActivity):
                 return True
-            elif type_str.lower() in ['prov:agent', 'agent'] and isinstance(node.prov_entity, ProvAgent):
+            elif type_local == 'agent' and isinstance(node.prov_entity, ProvAgent):
                 return True
 
-        except:
+        except Exception:
             pass
         return False
 
@@ -302,7 +314,7 @@ class CpmDocumentCoreMixin:
                         # Try to create prov_type QualifiedName manually if needed
                         prov_type_qname = prov_type
                     prov_type = prov_type_qname
-                except:
+                except Exception:
                     pass  # Use original string if QualifiedName creation fails
             if prov_type:
                 attr_list.append((PROV_TYPE, prov_type))
@@ -420,9 +432,7 @@ class CpmDocumentCoreMixin:
             # Filter by node type
             filtered_nodes = []
             for node in nodes_to_remove:
-                if ((node_type.lower() == 'entity' and isinstance(node.prov_entity, ProvEntity)) or
-                    (node_type.lower() == 'activity' and isinstance(node.prov_entity, ProvActivity)) or
-                        (node_type.lower() == 'agent' and isinstance(node.prov_entity, ProvAgent))):
+                if node.node_type_name == node_type.lower():
                     filtered_nodes.append(node)
             nodes_to_remove = filtered_nodes
 
@@ -475,12 +485,7 @@ class CpmDocumentCoreMixin:
 
         removed_any = False
         for node in nodes_to_remove:
-            if isinstance(node.prov_entity, ProvEntity):
-                removed_any |= self.remove_node(identifier, 'entity')
-            elif isinstance(node.prov_entity, ProvActivity):
-                removed_any |= self.remove_node(identifier, 'activity')
-            elif isinstance(node.prov_entity, ProvAgent):
-                removed_any |= self.remove_node(identifier, 'agent')
+            removed_any |= self.remove_node(identifier, node.node_type_name)
 
         return removed_any
 
@@ -517,11 +522,7 @@ class CpmDocumentCoreMixin:
             if attr_name != node.prov_entity.identifier:
                 attributes[str(attr_name)] = attr_value
 
-        node_type = 'entity'
-        if isinstance(node.prov_entity, ProvActivity):
-            node_type = 'activity'
-        elif isinstance(node.prov_entity, ProvAgent):
-            node_type = 'agent'
+        node_type = node.node_type_name
 
         # Remove old node and create new one
         self.remove_node(old_identifier)
@@ -807,103 +808,10 @@ class CpmDocumentCoreMixin:
                         matching_nodes.append(node)
                     elif attribute_value in attr_values:
                         matching_nodes.append(node)
-            except:
+            except Exception:
                 continue
 
         return matching_nodes
-
-    def get_domain_specific_nodes(self) -> List[GraphNode]:
-        """
-        Get all domain-specific nodes (non-traversal information).
-
-        Returns:
-            List of domain-specific nodes
-        """
-        ds_nodes = []
-        for node in self.graph_wrapper.get_nodes():
-            if not self.ti_algorithm.belongs_to_traversal_information(node.prov_entity):
-                ds_nodes.append(node)
-        return ds_nodes
-
-    def get_domain_specific_part(self) -> List[GraphNode]:
-        """
-        Get a cloned list of domain-specific nodes with only DS-to-DS relations.
-
-        Returns:
-            List of cloned domain-specific nodes
-        """
-        ds_nodes = self.get_domain_specific_nodes()
-
-        # Create deep copies of DS nodes
-        cloned_nodes = []
-        for node in ds_nodes:
-            # Create a copy of the node (this is a simplified version)
-            cloned_nodes.append(node)
-
-        return cloned_nodes
-
-    def get_related_connectors(self, connector_id: Union[str, QualifiedName],
-                               direction: str = 'both') -> List[GraphNode]:
-        """
-        Get connectors related to a given connector through derivation chains.
-
-        Args:
-            connector_id: Connector identifier
-            direction: 'forward', 'backward', or 'both'
-
-        Returns:
-            List of related connector nodes
-        """
-        connector_node = self.get_node(connector_id)
-        if not connector_node:
-            return []
-
-        # Check if it's actually a connector
-        if not (self._has_cpm_type(connector_node, CPM_FORWARD_CONNECTOR) or
-                self._has_cpm_type(connector_node, CPM_BACKWARD_CONNECTOR)):
-            return []
-
-        related = []
-        visited = set()
-
-        def _traverse_connectors(current_id: Union[str, QualifiedName],
-                                 search_direction: str):
-            if str(current_id) in visited:
-                return
-            visited.add(str(current_id))
-
-            if search_direction in ['forward', 'both']:
-                # Follow derivation edges forward
-                derivation_edges = self.get_edges(source_id=current_id, relation_type='derivation')
-                for edge in derivation_edges:
-                    _, target = self._extract_edge_endpoints(edge)
-                    if target:
-                        target_node = self.get_node(target)
-                        if (target_node and
-                            (self._has_cpm_type(target_node, CPM_FORWARD_CONNECTOR) or
-                             self._has_cpm_type(target_node, CPM_BACKWARD_CONNECTOR)) and
-                                self.ti_algorithm.belongs_to_traversal_information(target_node.prov_entity)):
-                            if target_node not in related:
-                                related.append(target_node)
-                            _traverse_connectors(target, search_direction)
-
-            if search_direction in ['backward', 'both']:
-                # Follow derivation edges backward
-                derivation_edges = self.get_edges(target_id=current_id, relation_type='derivation')
-                for edge in derivation_edges:
-                    source, _ = self._extract_edge_endpoints(edge)
-                    if source:
-                        source_node = self.get_node(source)
-                        if (source_node and
-                            (self._has_cpm_type(source_node, CPM_FORWARD_CONNECTOR) or
-                             self._has_cpm_type(source_node, CPM_BACKWARD_CONNECTOR)) and
-                                self.ti_algorithm.belongs_to_traversal_information(source_node.prov_entity)):
-                            if source_node not in related:
-                                related.append(source_node)
-                            _traverse_connectors(source, search_direction)
-
-        _traverse_connectors(connector_id, direction)
-        return related
 
     def _extract_edge_endpoints(self, edge: Any) -> Tuple[Optional[Any], Optional[Any]]:
         """Extract source and target from an edge/relation."""
@@ -1182,7 +1090,7 @@ class CpmDocumentCoreMixin:
             # Add more relation types as needed
 
             return True
-        except:
+        except Exception:
             return False
 
     def set_collection_members(self, old_collection_id: Union[str, QualifiedName],
@@ -1262,7 +1170,7 @@ class CpmDocumentCoreMixin:
             # Recreate graph wrapper to reflect changes
             self.graph_wrapper = ProvGraphWrapper(self.graph_wrapper.to_prov_document())
             return True
-        except:
+        except Exception:
             return False
 
     def get_nodes_map(self) -> Dict[str, List[GraphNode]]:
@@ -1323,7 +1231,7 @@ class CpmDocumentCoreMixin:
         try:
             bundle = self._get_bundle()
             return str(bundle.identifier) if bundle.identifier else None
-        except:
+        except Exception:
             return None
 
     def set_bundle_id(self, bundle_id: Union[str, QualifiedName]) -> bool:
@@ -1341,7 +1249,7 @@ class CpmDocumentCoreMixin:
             # Store the custom bundle ID for persistence across document reconstructions
             self._custom_bundle_id = bundle_id
             return True
-        except:
+        except Exception:
             return False
 
     def get_edge_with_kind(self, edge_id: Union[str, QualifiedName],
@@ -1392,7 +1300,7 @@ class CpmDocumentCoreMixin:
             # Add new edge with updated endpoints
             try:
                 self.add_edge(kind, new_cause_id, new_effect_id)
-            except:
+            except Exception:
                 return False
 
         # Recreate graph wrapper
@@ -1415,11 +1323,7 @@ class CpmDocumentCoreMixin:
         """
         nodes = self.get_nodes(node_id)
         for node in nodes:
-            if kind.lower() == 'entity' and isinstance(node.prov_entity, ProvEntity):
-                return node
-            elif kind.lower() == 'activity' and isinstance(node.prov_entity, ProvActivity):
-                return node
-            elif kind.lower() == 'agent' and isinstance(node.prov_entity, ProvAgent):
+            if node.node_type_name == kind.lower():
                 return node
         return None
 
@@ -1546,7 +1450,7 @@ class CpmDocumentCoreMixin:
 
             self.graph_wrapper = ProvGraphWrapper(self.graph_wrapper.to_prov_document())
             return True
-        except:
+        except Exception:
             return False
 
     def _update_relations_for_renamed_element(self, old_id: Union[str, QualifiedName],

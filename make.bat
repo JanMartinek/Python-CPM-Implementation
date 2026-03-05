@@ -58,7 +58,7 @@ goto end
 
 :test-specific
 echo Running template tests...
-python -m pytest tests/test_template.py -v
+python -m pytest tests/template/test_template.py -v
 goto end
 
 :examples

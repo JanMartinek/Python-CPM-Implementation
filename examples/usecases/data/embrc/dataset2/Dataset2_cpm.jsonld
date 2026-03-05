@@ -1,0 +1,246 @@
+{
+  "@context" : [ {
+    "schema" : "https://schema.org/",
+    "gen" : "gen/",
+    "seadatanet" : "https://edmo.seadatanet.org/report/",
+    "cpm" : "https://www.commonprovenancemodel.org/cpm-namespace-v1-0/",
+    "dct" : "http://purl.org/dc/terms/",
+    "xsd" : "http://www.w3.org/2001/XMLSchema#",
+    "orcid" : "https://orcid.org/",
+    "obolibrary" : "http://purl.obolibrary.org/obo/",
+    "prov" : "http://www.w3.org/ns/prov#",
+    "_" : "https://openprovenance.org/blank#",
+    "sosa" : "http://www.w3.org/ns/sosa/"
+  }, "https://openprovenance.org/prov-jsonld/context.jsonld" ],
+  "@graph" : [ {
+    "@type" : "Bundle",
+    "@context" : [ { }, "https://openprovenance.org/prov-jsonld/context.jsonld" ],
+    "@id" : "_:ProcessingBundle",
+    "@graph" : [ {
+      "@type" : "Activity",
+      "@id" : "_:Processing",
+      "dct:hasPart" : [ "_:MaterialProcessing" ],
+      "type" : [ "cpm:mainActivity" ]
+    }, {
+      "@type" : "Usage",
+      "activity" : "_:Processing",
+      "entity" : "_:StoredSampleCon_r1"
+    }, {
+      "@type" : "Generation",
+      "entity" : "_:ProcessedSampleCon",
+      "activity" : "_:Processing"
+    }, {
+      "@type" : "Entity",
+      "@id" : "_:StoredSampleCon_r1",
+      "type" : [ "cpm:backwardConnector" ],
+      "cpm:referencedBundleId" : [ "_:SamplingBundle" ]
+    }, {
+      "@type" : "Attribution",
+      "entity" : "_:StoredSampleCon_r1",
+      "agent" : "_:NiceMarineStation"
+    }, {
+      "@type" : "Entity",
+      "@id" : "_:ProcessedSampleCon",
+      "type" : [ "cpm:forwardConnector" ]
+    }, {
+      "@type" : "Derivation",
+      "generatedEntity" : "_:ProcessedSampleCon",
+      "usedEntity" : "_:StoredSampleCon_r1"
+    }, {
+      "@type" : "Entity",
+      "@id" : "_:ProcessedSampleConSpec",
+      "type" : [ "cpm:forwardConnector" ],
+      "cpm:referencedBundleId" : [ "_:SpeciesIdentificationBundle" ]
+    }, {
+      "@type" : "Attribution",
+      "entity" : "_:ProcessedSampleConSpec",
+      "agent" : "_:NiceMarineStation"
+    }, {
+      "@type" : "Specialization",
+      "specificEntity" : "_:ProcessedSampleConSpec",
+      "generalEntity" : "_:ProcessedSampleCon"
+    }, {
+      "@type" : "Agent",
+      "@id" : "_:NiceMarineStation",
+      "type" : [ "cpm:senderAgent", "cpm:receiverAgent" ]
+    }, {
+      "@type" : "Entity",
+      "@id" : "gen:5017bc3edda5006a4c29737b48585fefdfd4ef740bed03ab10730ec86e4153d7",
+      "schema:description" : [ {
+        "@value" : "the first set of images taken by the flowcam are stored in /Users/NMSlab/flowcam/20210101/BigProject/raw"
+      } ],
+      "type" : [ "schema:Dataset", "schema:Thing" ]
+    }, {
+      "@type" : "Entity",
+      "@id" : "obolibrary:ENVO_00002150",
+      "schema:name" : [ {
+        "@value" : "coastal sea water"
+      } ],
+      "type" : [ "schema:DefinedTerm" ],
+      "schema:termCode" : [ {
+        "@value" : "ENVO_00002150"
+      } ]
+    }, {
+      "@type" : "Entity",
+      "@id" : "gen:a237c6fdc6c44c8dcda8bd87bd58b4690dcf34a0cc5732a1636bb1183f448575",
+      "schema:name" : [ {
+        "@value" : "Nice Marine Station"
+      } ],
+      "schema:address" : [ {
+        "@value" : "NiceMarineStation Rd, Ostend, Belgium"
+      } ],
+      "type" : [ "schema:Place", "prov:Location" ]
+    }, {
+      "@type" : "Entity",
+      "@id" : "_:FlowCam_seawater_sop",
+      "schema:name" : [ {
+        "@value" : "FlowCam_seawater_sop"
+      } ],
+      "schema:accessibilitySummary" : [ {
+        "@value" : "see file FlowCam_seawaterSOP.pdf which is part of this data package"
+      } ],
+      "schema:description" : [ {
+        "@value" : "Instructions for using FlowCam with seawater, including camera settings"
+      } ],
+      "type" : [ "schema:Thing", "schema:CreativeWork" ]
+    }, {
+      "@type" : "Entity",
+      "@id" : "_:BigProject_belgium_water_10m_1000um_r1",
+      "schema:name" : [ {
+        "@value" : "BigProject_belgium_water_10m_1000um_r1"
+      } ],
+      "schema:keywords" : [ "obolibrary:ENVO_00002150", "_:NCBI_txid1874687" ],
+      "schema:description" : [ {
+        "@value" : "Water sample collected from 10m depth and filtered at 1000um"
+      } ],
+      "type" : [ "sosa:Sample", "schema:Thing" ]
+    }, {
+      "@type" : "Entity",
+      "@id" : "_:NMS_flowcam_2010",
+      "schema:name" : [ {
+        "@value" : "FlowCam Micro from CoolLabInstruments Corp., 2010"
+      } ],
+      "schema:identifier" : [ {
+        "@value" : "NMS_flowcam_2010"
+      } ],
+      "dct:type" : [ {
+        "@value" : "https://vocab.nerc.ac.uk/collection/L05/current/LAB27"
+      } ],
+      "schema:description" : [ {
+        "@value" : "see file flowcam-settings.txt for software and hardware settings"
+      } ],
+      "type" : [ "schema:Thing" ]
+    }, {
+      "@type" : "Entity",
+      "@id" : "_:NCBI_txid1874687",
+      "schema:name" : [ {
+        "@value" : "marine plaknton metagenome"
+      } ],
+      "type" : [ "schema:DefinedTerm" ],
+      "schema:termCode" : [ {
+        "@value" : "NCBI:txid1874687"
+      } ]
+    }, {
+      "@type" : "Entity",
+      "@id" : "_:VisualSpreadsheet_FlowCam",
+      "schema:name" : [ {
+        "@value" : "VisualSpreadsheet FlowCam Micro software"
+      } ],
+      "schema:accessibilitySummary" : [ {
+        "@value" : "see file flowcam-settings.txt which is part of the data package"
+      } ],
+      "schema:description" : [ {
+        "@value" : "The software that comes with this FlowCam, bought in 2010"
+      } ],
+      "type" : [ "schema:SoftwareApplication", "schema:Thing" ]
+    }, {
+      "@type" : "Activity",
+      "@id" : "_:MaterialProcessing",
+      "startTime" : "2021-01-01T00:00:00.000+01:00",
+      "endTime" : "2021-01-01T00:00:00.000+01:00",
+      "location" : [ {
+        "@value" : "gen:a237c6fdc6c44c8dcda8bd87bd58b4690dcf34a0cc5732a1636bb1183f448575"
+      } ],
+      "schema:result" : [ {
+        "@value" : "gen:5017bc3edda5006a4c29737b48585fefdfd4ef740bed03ab10730ec86e4153d7"
+      } ],
+      "dct:type" : [ {
+        "@value" : "Material Processing; FlowCam imaging"
+      } ],
+      "type" : [ "schema:Action" ],
+      "schema:object" : [ {
+        "@value" : "_:BigProject_belgium_water_10m_1000um_r1"
+      } ]
+    }, {
+      "@type" : "Agent",
+      "@id" : "seadatanet:00000",
+      "schema:name" : [ {
+        "@value" : "Nice Marine Station"
+      } ],
+      "schema:email" : [ {
+        "@value" : "info@nicemarinestation.eu"
+      } ],
+      "schema:identifier" : [ {
+        "@value" : "seadatanet:00000"
+      } ],
+      "schema:mainEntityOfPage" : [ {
+        "@value" : "https://NiceMarineStation.eu"
+      } ],
+      "type" : [ "schema:Organization" ]
+    }, {
+      "@type" : "Agent",
+      "@id" : "orcid:0000-0001-0001-0002",
+      "schema:name" : [ {
+        "@value" : "J. Gerschwin"
+      } ],
+      "schema:email" : [ {
+        "@value" : "jg@somewhere.com"
+      } ],
+      "schema:identifier" : [ {
+        "@value" : "orcid:0000-0001-0001-0002"
+      } ],
+      "schema:affiliation" : [ {
+        "@value" : "seadatanet:00000"
+      } ],
+      "type" : [ "schema:Person" ]
+    }, {
+      "@type" : "Usage",
+      "activity" : "_:MaterialProcessing",
+      "entity" : "_:FlowCam_seawater_sop"
+    }, {
+      "@type" : "Usage",
+      "activity" : "_:MaterialProcessing",
+      "entity" : "_:NMS_flowcam_2010"
+    }, {
+      "@type" : "Usage",
+      "activity" : "_:MaterialProcessing",
+      "entity" : "_:BigProject_belgium_water_10m_1000um_r1"
+    }, {
+      "@type" : "Generation",
+      "entity" : "gen:5017bc3edda5006a4c29737b48585fefdfd4ef740bed03ab10730ec86e4153d7",
+      "activity" : "_:MaterialProcessing"
+    }, {
+      "@type" : "Association",
+      "activity" : "_:MaterialProcessing",
+      "agent" : "orcid:0000-0001-0001-0002",
+      "role" : [ {
+        "@value" : "lab technician"
+      } ]
+    }, {
+      "@type" : "Influence",
+      "influencee" : "_:NMS_flowcam_2010",
+      "influencer" : "_:VisualSpreadsheet_FlowCam",
+      "schema:accessibilitySummary" : [ {
+        "@value" : "see file flowcam-settings.txt for software and hardware settings"
+      } ]
+    }, {
+      "@type" : "Specialization",
+      "specificEntity" : "_:BigProject_belgium_water_10m_1000um_r1",
+      "generalEntity" : "_:StoredSampleCon_r1"
+    }, {
+      "@type" : "Specialization",
+      "specificEntity" : "gen:5017bc3edda5006a4c29737b48585fefdfd4ef740bed03ab10730ec86e4153d7",
+      "generalEntity" : "_:ProcessedSampleCon"
+    } ]
+  } ]
+}

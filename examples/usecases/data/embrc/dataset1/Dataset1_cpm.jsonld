@@ -1,0 +1,670 @@
+{
+  "@context" : [ {
+    "schema" : "https://schema.org/",
+    "cpm" : "https://www.commonprovenancemodel.org/cpm-namespace-v1-0/",
+    "xsd" : "http://www.w3.org/2001/XMLSchema#",
+    "orcid" : "https://orcid.org/",
+    "obolibrary" : "http://purl.obolibrary.org/obo/",
+    "gen" : "gen/",
+    "seadatanet" : "https://edmo.seadatanet.org/report/",
+    "dct" : "http://purl.org/dc/terms/",
+    "marineregions" : "http://marineregions.org/mrgid/",
+    "dcat" : "http://www.w3.org/ns/dcat#",
+    "prov" : "http://www.w3.org/ns/prov#",
+    "_" : "https://openprovenance.org/blank#",
+    "sosa" : "http://www.w3.org/ns/sosa/"
+  }, "https://openprovenance.org/prov-jsonld/context.jsonld" ],
+  "@graph" : [ {
+    "@type" : "Bundle",
+    "@context" : [ { }, "https://openprovenance.org/prov-jsonld/context.jsonld" ],
+    "@id" : "_:SamplingBundle",
+    "@graph" : [ {
+      "@type" : "Activity",
+      "@id" : "_:Sampling",
+      "dct:hasPart" : [ "gen:09a6f65fe087c3806631e8926fa3cae8e049cfdfa2b0b63fe6de04bc88144e80", "gen:fd7e5c8ca79a78538b324f8426a3a6c48fdb58a0a3e2718e185455205b48d7e2", "gen:324df37d2e503522d56f379d8856e4d14599331df280bf0d011fe3060871261a", "gen:36294ecf35d15ba81da0bb55dfd8ee07934568e28ec56a51774b3e331ed6fd99", "gen:67c557a442ca2446b987928fb47c4bbbd59c54395e61f01949d76c06e0106925", "gen:190fd43b1968737f3501420a6bfd9b74873e32416c6e14fef26238fbe3b197a2" ],
+      "type" : [ "cpm:mainActivity" ]
+    }, {
+      "@type" : "Generation",
+      "entity" : "_:StoredSampleCon_r1",
+      "activity" : "_:Sampling"
+    }, {
+      "@type" : "Generation",
+      "entity" : "_:StoredSampleCon_r2_3um",
+      "activity" : "_:Sampling"
+    }, {
+      "@type" : "Entity",
+      "@id" : "_:StoredSampleCon_r1",
+      "type" : [ "cpm:forwardConnector" ]
+    }, {
+      "@type" : "Entity",
+      "@id" : "_:StoredSampleCon_r1_Spec",
+      "type" : [ "cpm:forwardConnector" ],
+      "cpm:referencedBundleId" : [ "_:ProcessingBundle" ]
+    }, {
+      "@type" : "Attribution",
+      "entity" : "_:StoredSampleCon_r1_Spec",
+      "agent" : "_:NiceMarineStation"
+    }, {
+      "@type" : "Specialization",
+      "specificEntity" : "_:StoredSampleCon_r1_Spec",
+      "generalEntity" : "_:StoredSampleCon_r1"
+    }, {
+      "@type" : "Entity",
+      "@id" : "_:StoredSampleCon_r2_3um",
+      "type" : [ "cpm:forwardConnector" ]
+    }, {
+      "@type" : "Entity",
+      "@id" : "_:StoredSampleCon_r2_3um_Spec",
+      "type" : [ "cpm:forwardConnector" ],
+      "cpm:referencedBundleId" : [ "_:DnaSequencingBundle" ]
+    }, {
+      "@type" : "Attribution",
+      "entity" : "_:StoredSampleCon_r2_3um_Spec",
+      "agent" : "_:SequencingIsUsHQ"
+    }, {
+      "@type" : "Specialization",
+      "specificEntity" : "_:StoredSampleCon_r2_3um_Spec",
+      "generalEntity" : "_:StoredSampleCon_r2_3um"
+    }, {
+      "@type" : "Entity",
+      "@id" : "_:IdentifiedSpeciesCon",
+      "type" : [ "cpm:forwardConnector" ]
+    }, {
+      "@type" : "Derivation",
+      "generatedEntity" : "_:IdentifiedSpeciesCon",
+      "usedEntity" : "_:StoredSampleCon_r1"
+    }, {
+      "@type" : "Entity",
+      "@id" : "_:IdentifiedSpeciesConSpec",
+      "type" : [ "cpm:forwardConnector" ],
+      "cpm:referencedBundleId" : [ "_:SpeciesIdentificationBundle" ]
+    }, {
+      "@type" : "Attribution",
+      "entity" : "_:IdentifiedSpeciesConSpec",
+      "agent" : "_:NiceMarineStation"
+    }, {
+      "@type" : "Specialization",
+      "specificEntity" : "_:IdentifiedSpeciesConSpec",
+      "generalEntity" : "_:IdentifiedSpeciesCon"
+    }, {
+      "@type" : "Agent",
+      "@id" : "_:NiceMarineStation",
+      "type" : [ "cpm:receiverAgent" ]
+    }, {
+      "@type" : "Agent",
+      "@id" : "_:SequencingIsUsHQ",
+      "type" : [ "cpm:receiverAgent" ]
+    }, {
+      "@type" : "Entity",
+      "@id" : "_:ABSPermit_ircc2345678",
+      "schema:name" : [ {
+        "@value" : "ABS permit"
+      } ],
+      "schema:validIn" : [ {
+        "@value" : "marineregions:3293"
+      } ],
+      "schema:issuer" : [ {
+        "@value" : "gen:8fefd86e6fd2acc15cd4db7a2ecff042dcde5d323d208c85e7434630d0342588"
+      } ],
+      "schema:validFrom" : [ {
+        "@value" : "2021-01-01"
+      } ],
+      "schema:identifier" : [ {
+        "@value" : "ircc2345678"
+      } ],
+      "schema:description" : [ {
+        "@value" : "Samples of sea water from the Belgian EEZ collected over the period 2021-01-01 to 2022-01-01; processed for environmental DNA for taxonomic classification purposes"
+      } ],
+      "schema:validUntil" : [ {
+        "@value" : "2022-01-01"
+      } ],
+      "type" : [ "schema:Permit", "schema:Thing", "schema:CreativeWork" ]
+    }, {
+      "@type" : "Entity",
+      "@id" : "gen:92b8f2fa96e3b102c47d14fabec8e2a3ded5d27b5996e5a6967c8e39b062b9f5",
+      "schema:name" : [ {
+        "@value" : "Peristaltic pump (including pump heads, appropriate silicone tubes, stainless steel filter holders)"
+      } ],
+      "dct:type" : [ {
+        "@value" : "Masterflex - EW-07522-20"
+      } ],
+      "type" : [ "schema:Thing" ]
+    }, {
+      "@type" : "Entity",
+      "@id" : "_:NiceMarineStation_rosette#1",
+      "schema:name" : [ {
+        "@value" : "NiceMarineStation rosette#1"
+      } ],
+      "sosa:isHostedBy" : [ {
+        "@value" : "_:IMO_1234567"
+      } ],
+      "dct:type" : [ {
+        "@value" : "Niskin bottles on a Rosette sampler"
+      } ],
+      "type" : [ "schema:Thing" ]
+    }, {
+      "@type" : "Entity",
+      "@id" : "_:Johnson_Fridge_type_XYZ",
+      "schema:name" : [ {
+        "@value" : "Johnson Fridge type XYZ"
+      } ],
+      "sosa:isHostedBy" : [ {
+        "@value" : "_:IMO_1234567"
+      } ],
+      "dct:type" : [ {
+        "@value" : "samples fridge"
+      } ],
+      "type" : [ "schema:Thing" ]
+    }, {
+      "@type" : "Entity",
+      "@id" : "_:NCBI_txid1874687",
+      "schema:name" : [ {
+        "@value" : "marine plaknton metagenome"
+      } ],
+      "type" : [ "schema:DefinedTerm" ],
+      "schema:termCode" : [ {
+        "@value" : "NCBI:txid1874687"
+      } ]
+    }, {
+      "@type" : "Entity",
+      "@id" : "_:BigProject_belgium_water_10m_1000um_r2",
+      "schema:name" : [ {
+        "@value" : "BigProject_belgium_water_10m_1000um_r2"
+      } ],
+      "schema:keywords" : [ "obolibrary:ENVO_00002150", "_:NCBI_txid1874687" ],
+      "schema:description" : [ {
+        "@value" : "water sample collected from 10m depth and filtered at 1000um"
+      } ],
+      "type" : [ "sosa:Sample", "schema:Thing" ]
+    }, {
+      "@type" : "Entity",
+      "@id" : "_:StoredSample_r2_3um",
+      "type" : [ "sosa:Sample", "schema:Thing" ]
+    }, {
+      "@type" : "Entity",
+      "@id" : "_:BigProject_WaterSamples",
+      "schema:name" : [ {
+        "@value" : "BigProject_WaterSamples"
+      } ],
+      "schema:url" : [ {
+        "@value" : "https://www.protocols.io/BigProject_WaterSamples.pdf"
+      } ],
+      "schema:description" : [ {
+        "@value" : "Collecting and pre-filtering (removal of larger particles) of water samples to be used later for FlowCam and eDNA work"
+      } ],
+      "type" : [ "schema:Thing", "schema:CreativeWork" ]
+    }, {
+      "@type" : "Entity",
+      "@id" : "_:Johnson_Freezer_type_XYZ",
+      "schema:name" : [ {
+        "@value" : "Johnson Freezer type XYZ"
+      } ],
+      "sosa:isHostedBy" : [ {
+        "@value" : "_:IMO_1234567"
+      } ],
+      "dct:type" : [ {
+        "@value" : "samples freezer"
+      } ],
+      "type" : [ "schema:Thing" ]
+    }, {
+      "@type" : "Entity",
+      "@id" : "obolibrary:ENVO_00002150",
+      "schema:name" : [ {
+        "@value" : "coastal sea water"
+      } ],
+      "type" : [ "schema:DefinedTerm" ],
+      "schema:termCode" : [ {
+        "@value" : "ENVO_00002150"
+      } ]
+    }, {
+      "@type" : "Entity",
+      "@id" : "_:IMO_1234567",
+      "schema:name" : [ {
+        "@value" : "RV OurBigShip"
+      } ],
+      "schema:identifier" : [ {
+        "@value" : "IMO:1234567"
+      } ],
+      "dct:type" : [ {
+        "@value" : "https://vocab.nerc.ac.uk/collection/L05/31"
+      } ],
+      "type" : [ "sosa:Platform", "schema:Thing" ]
+    }, {
+      "@type" : "Entity",
+      "@id" : "gen:4a86c49fc31d3ba9b8a8e3c961dc7d1ef6cb59769f75fbd2b92aa36ef71b1fa2",
+      "sosa:hasFeatureOfInterest" : [ {
+        "@value" : "http://vocab.nerc.ac.uk/collection/A05/current/EV_SALIN"
+      } ],
+      "type" : [ "sosa:Observation" ]
+    }, {
+      "@type" : "Entity",
+      "@id" : "marineregions:3293",
+      "schema:name" : [ {
+        "@value" : "Belgian EEZ"
+      } ],
+      "schema:geo" : [ {
+        "@value" : "gen:374da96f393f90611618df5475f7b17158935e3f8eecf9f419d878e8a82ac23c"
+      } ],
+      "schema:identifier" : [ {
+        "@value" : "marineregions:3293"
+      } ],
+      "type" : [ "schema:Place" ]
+    }, {
+      "@type" : "Entity",
+      "@id" : "gen:7d38ee5a6e0fc3fc67a78988647227bc0f07befb48f8101e78f726fb0c31ec64",
+      "schema:name" : [ {
+        "@value" : "RV OurBigShip on-board lab"
+      } ],
+      "type" : [ "schema:Place", "prov:Location" ]
+    }, {
+      "@type" : "Entity",
+      "@id" : "_:BigProject_belgium_water_10m",
+      "schema:name" : [ {
+        "@value" : "BigProject_belgium_water_10m"
+      } ],
+      "schema:keywords" : [ "obolibrary:ENVO_00002150", "_:NCBI_txid1874687" ],
+      "schema:description" : [ {
+        "@value" : "Water sample to determine plankton community and extract DNA"
+      } ],
+      "type" : [ "sosa:Sample", "schema:Thing" ]
+    }, {
+      "@type" : "Entity",
+      "@id" : "_:BigProject_belgium_water_10m_1000um_r2_3um",
+      "schema:name" : [ {
+        "@value" : "BigProject_belgium_water_10m_1000um_r2_3um"
+      } ],
+      "schema:keywords" : [ "obolibrary:ENVO_00002150", "_:NCBI_txid1874687" ],
+      "schema:description" : [ {
+        "@value" : "water sample collected from 10m depth and filtered at 1000um and again 3um"
+      } ],
+      "type" : [ "sosa:Sample", "schema:Thing" ]
+    }, {
+      "@type" : "Entity",
+      "@id" : "gen:374da96f393f90611618df5475f7b17158935e3f8eecf9f419d878e8a82ac23c",
+      "schema:latitude" : [ {
+        "@value" : "51.249995"
+      } ],
+      "schema:longitude" : [ {
+        "@value" : "2.85327"
+      } ],
+      "type" : [ "schema:GeoCoordinates" ]
+    }, {
+      "@type" : "Entity",
+      "@id" : "_:StoredSample_r1",
+      "type" : [ "sosa:Sample", "schema:Thing" ]
+    }, {
+      "@type" : "Entity",
+      "@id" : "_:BigHappyOrganization_rosette#1"
+    }, {
+      "@type" : "Entity",
+      "@id" : "gen:7576ad666f53f0a260c8b4959bebe7c720599e170cb4faa9f65a467fe0265178",
+      "sosa:hasFeatureOfInterest" : [ {
+        "@value" : "http://vocab.nerc.ac.uk/collection/P02/current/TEMP"
+      } ],
+      "type" : [ "sosa:Observation" ]
+    }, {
+      "@type" : "Entity",
+      "@id" : "_:CTD_standard_procedure_2",
+      "schema:name" : [ {
+        "@value" : "CTD_standard_procedure_2"
+      } ],
+      "schema:url" : [ {
+        "@value" : "https://www.mylab.eu/CTDinstructions.pdf"
+      } ],
+      "schema:description" : [ {
+        "@value" : "instructions for using the CTD"
+      } ],
+      "type" : [ "schema:Thing", "schema:CreativeWork" ]
+    }, {
+      "@type" : "Entity",
+      "@id" : "_:BigProject_belgium_water_10m_1000um_r1",
+      "schema:name" : [ {
+        "@value" : "BigProject_belgium_water_10m_1000um_r1"
+      } ],
+      "schema:keywords" : [ "obolibrary:ENVO_00002150", "_:NCBI_txid1874687" ],
+      "schema:description" : [ {
+        "@value" : "water sample collected from 10m depth and filtered at 1000um"
+      } ],
+      "type" : [ "sosa:Sample", "schema:Thing" ]
+    }, {
+      "@type" : "Entity",
+      "@id" : "_:BigProject_eDNAfiltering",
+      "schema:name" : [ {
+        "@value" : "BigProject_eDNAfiltering"
+      } ],
+      "schema:url" : [ {
+        "@value" : "https://www.protocols.io/BigProject_eDNAfiltering.pdf"
+      } ],
+      "schema:description" : [ {
+        "@value" : "instructions for water samples filtering - to capture the biological material on the filter membrane which will be used for DNA extraction"
+      } ],
+      "type" : [ "schema:Thing", "schema:CreativeWork" ]
+    }, {
+      "@type" : "Entity",
+      "@id" : "gen:42936f9ee985b4cd422796235fa7d454c24693f07b97b65b2478f8df1ea6f5b2",
+      "schema:name" : [ {
+        "@value" : "1000 mesh"
+      } ],
+      "dct:type" : [ {
+        "@value" : "nylon mesh of 1000 um pore size"
+      } ],
+      "type" : [ "schema:Thing" ]
+    }, {
+      "@type" : "Entity",
+      "@id" : "_:BigHappyOrganization_CTD#23",
+      "schema:name" : [ {
+        "@value" : "BigHappyOrganization CTD#23"
+      } ],
+      "sosa:isHostedBy" : [ {
+        "@value" : "_:IMO_1234567"
+      } ],
+      "dct:type" : [ {
+        "@value" : "https://vocab.nerc.ac.uk/collection/L05/current/130"
+      } ],
+      "type" : [ "schema:Thing" ]
+    }, {
+      "@type" : "Activity",
+      "@id" : "gen:190fd43b1968737f3501420a6bfd9b74873e32416c6e14fef26238fbe3b197a2",
+      "startTime" : "2021-01-01T00:00:00.000+01:00",
+      "endTime" : "2021-01-01T00:00:00.000+01:00",
+      "sosa:madeBySampler" : [ {
+        "@value" : "_:BigHappyOrganization_rosette#1"
+      } ],
+      "location" : [ {
+        "@value" : "marineregions:3293"
+      } ],
+      "dct:type" : [ {
+        "@value" : "Sampling, water sampling from 10m depth"
+      } ],
+      "type" : [ "schema:Action", "sosa:Sampling" ]
+    }, {
+      "@type" : "Activity",
+      "@id" : "gen:67c557a442ca2446b987928fb47c4bbbd59c54395e61f01949d76c06e0106925",
+      "startTime" : "2021-01-01T00:00:00.000+01:00",
+      "endTime" : "2021-01-01T00:00:00.000+01:00",
+      "location" : [ {
+        "@value" : "gen:7d38ee5a6e0fc3fc67a78988647227bc0f07befb48f8101e78f726fb0c31ec64"
+      } ],
+      "dct:type" : [ {
+        "@value" : "Storing, short term; cold storage subsample 2"
+      } ],
+      "schema:description" : [ {
+        "@value" : "-20 C"
+      } ],
+      "type" : [ "schema:Action" ],
+      "schema:object" : [ {
+        "@value" : "_:BigProject_belgium_water_10m_1000um_r2_3um"
+      } ]
+    }, {
+      "@type" : "Activity",
+      "@id" : "gen:36294ecf35d15ba81da0bb55dfd8ee07934568e28ec56a51774b3e331ed6fd99",
+      "startTime" : "2021-01-01T00:00:00.000+01:00",
+      "endTime" : "2021-01-01T00:00:00.000+01:00",
+      "location" : [ {
+        "@value" : "marineregions:3293"
+      } ],
+      "dct:type" : [ {
+        "@value" : "Observing, in-situ measurement of water properties"
+      } ],
+      "type" : [ "schema:Action" ]
+    }, {
+      "@type" : "Activity",
+      "@id" : "gen:fd7e5c8ca79a78538b324f8426a3a6c48fdb58a0a3e2718e185455205b48d7e2",
+      "startTime" : "2021-01-01T00:00:00.000+01:00",
+      "endTime" : "2021-01-01T00:00:00.000+01:00",
+      "location" : [ {
+        "@value" : "gen:7d38ee5a6e0fc3fc67a78988647227bc0f07befb48f8101e78f726fb0c31ec64"
+      } ],
+      "schema:result" : [ {
+        "@value" : "_:BigProject_belgium_water_10m_1000um_r2_3um"
+      } ],
+      "dct:type" : [ {
+        "@value" : "Material processing, fine filtering"
+      } ],
+      "type" : [ "schema:Action" ],
+      "schema:object" : [ {
+        "@value" : "_:BigProject_belgium_water_10m_1000um_r2"
+      } ]
+    }, {
+      "@type" : "Activity",
+      "@id" : "gen:09a6f65fe087c3806631e8926fa3cae8e049cfdfa2b0b63fe6de04bc88144e80",
+      "startTime" : "2021-01-01T00:00:00.000+01:00",
+      "endTime" : "2021-01-01T00:00:00.000+01:00",
+      "schema:additionalType" : [ {
+        "@value" : "short-term storage"
+      } ],
+      "location" : [ {
+        "@value" : "gen:7d38ee5a6e0fc3fc67a78988647227bc0f07befb48f8101e78f726fb0c31ec64"
+      } ],
+      "dct:type" : [ {
+        "@value" : "Storing; cold storage subsample 1"
+      } ],
+      "schema:description" : [ {
+        "@value" : "+4 C"
+      } ],
+      "type" : [ "schema:Action" ],
+      "schema:object" : [ {
+        "@value" : "_:BigProject_belgium_water_10m_1000um_r1"
+      } ]
+    }, {
+      "@type" : "Activity",
+      "@id" : "gen:324df37d2e503522d56f379d8856e4d14599331df280bf0d011fe3060871261a",
+      "startTime" : "2021-01-01T00:00:00.000+01:00",
+      "endTime" : "2021-01-01T00:00:00.000+01:00",
+      "location" : [ {
+        "@value" : "gen:7d38ee5a6e0fc3fc67a78988647227bc0f07befb48f8101e78f726fb0c31ec64"
+      } ],
+      "schema:result" : [ "_:BigProject_belgium_water_10m_1000um_r1", "_:BigProject_belgium_water_10m_1000um_r2" ],
+      "dct:type" : [ {
+        "@value" : "Material processing, pre-filtering"
+      } ],
+      "type" : [ "schema:Action" ],
+      "schema:object" : [ {
+        "@value" : "_:BigProject_belgium_water_10m"
+      } ]
+    }, {
+      "@type" : "Agent",
+      "@id" : "orcid:0000-0001-0001-0001",
+      "schema:name" : [ {
+        "@value" : "Jane Smith"
+      } ],
+      "schema:email" : [ {
+        "@value" : "jane.smith@somewhere.com"
+      } ],
+      "schema:identifier" : [ {
+        "@value" : "orcid:0000-0001-0001-0001"
+      } ],
+      "schema:affiliation" : [ {
+        "@value" : "seadatanet:00000"
+      } ],
+      "type" : [ "schema:Person" ]
+    }, {
+      "@type" : "Agent",
+      "@id" : "seadatanet:00000",
+      "schema:name" : [ {
+        "@value" : "Nice Marine Station"
+      } ],
+      "schema:email" : [ {
+        "@value" : "info@nicemarinestation.eu"
+      } ],
+      "schema:identifier" : [ {
+        "@value" : "seadatanet:00000"
+      } ],
+      "schema:mainEntityOfPage" : [ {
+        "@value" : "https://NiceMarineStation.eu"
+      } ],
+      "type" : [ "schema:Organization" ]
+    }, {
+      "@type" : "Agent",
+      "@id" : "gen:8fefd86e6fd2acc15cd4db7a2ecff042dcde5d323d208c85e7434630d0342588",
+      "schema:name" : [ {
+        "@value" : "Belgium ABS National Focal Point"
+      } ],
+      "schema:mainEntityOfPage" : [ {
+        "@value" : "https://absch.cbd.int/en/countries/BE"
+      } ],
+      "type" : [ "schema:Organization" ]
+    }, {
+      "@type" : "Agent",
+      "@id" : "orcid:0000-0001-0001-0002",
+      "schema:name" : [ {
+        "@value" : "F. Lee"
+      } ],
+      "schema:email" : [ {
+        "@value" : "f.lee@somewhere.com"
+      } ],
+      "schema:identifier" : [ {
+        "@value" : "orcid:0000-0001-0001-0002"
+      } ],
+      "schema:affiliation" : [ {
+        "@value" : "seadatanet:00000"
+      } ],
+      "type" : [ "schema:Person" ]
+    }, {
+      "@type" : "Usage",
+      "activity" : "gen:190fd43b1968737f3501420a6bfd9b74873e32416c6e14fef26238fbe3b197a2",
+      "entity" : "_:BigProject_WaterSamples"
+    }, {
+      "@type" : "Usage",
+      "activity" : "gen:190fd43b1968737f3501420a6bfd9b74873e32416c6e14fef26238fbe3b197a2",
+      "entity" : "_:ABSPermit_ircc2345678"
+    }, {
+      "@type" : "Usage",
+      "activity" : "gen:36294ecf35d15ba81da0bb55dfd8ee07934568e28ec56a51774b3e331ed6fd99",
+      "entity" : "_:CTD_standard_procedure_2"
+    }, {
+      "@type" : "Usage",
+      "activity" : "gen:324df37d2e503522d56f379d8856e4d14599331df280bf0d011fe3060871261a",
+      "entity" : "_:BigProject_WaterSamples"
+    }, {
+      "@type" : "Usage",
+      "activity" : "gen:324df37d2e503522d56f379d8856e4d14599331df280bf0d011fe3060871261a",
+      "entity" : "gen:42936f9ee985b4cd422796235fa7d454c24693f07b97b65b2478f8df1ea6f5b2"
+    }, {
+      "@type" : "Usage",
+      "activity" : "gen:324df37d2e503522d56f379d8856e4d14599331df280bf0d011fe3060871261a",
+      "entity" : "_:BigProject_belgium_water_10m"
+    }, {
+      "@type" : "Usage",
+      "activity" : "gen:fd7e5c8ca79a78538b324f8426a3a6c48fdb58a0a3e2718e185455205b48d7e2",
+      "entity" : "_:BigProject_eDNAfiltering"
+    }, {
+      "@type" : "Usage",
+      "activity" : "gen:fd7e5c8ca79a78538b324f8426a3a6c48fdb58a0a3e2718e185455205b48d7e2",
+      "entity" : "gen:92b8f2fa96e3b102c47d14fabec8e2a3ded5d27b5996e5a6967c8e39b062b9f5"
+    }, {
+      "@type" : "Usage",
+      "activity" : "gen:fd7e5c8ca79a78538b324f8426a3a6c48fdb58a0a3e2718e185455205b48d7e2",
+      "entity" : "_:BigProject_belgium_water_10m_1000um_r2"
+    }, {
+      "@type" : "Usage",
+      "activity" : "gen:09a6f65fe087c3806631e8926fa3cae8e049cfdfa2b0b63fe6de04bc88144e80",
+      "entity" : "_:Johnson_Fridge_type_XYZ"
+    }, {
+      "@type" : "Usage",
+      "activity" : "gen:09a6f65fe087c3806631e8926fa3cae8e049cfdfa2b0b63fe6de04bc88144e80",
+      "entity" : "_:BigProject_belgium_water_10m_1000um_r1"
+    }, {
+      "@type" : "Usage",
+      "activity" : "gen:67c557a442ca2446b987928fb47c4bbbd59c54395e61f01949d76c06e0106925",
+      "entity" : "_:Johnson_Freezer_type_XYZ"
+    }, {
+      "@type" : "Usage",
+      "activity" : "gen:67c557a442ca2446b987928fb47c4bbbd59c54395e61f01949d76c06e0106925",
+      "entity" : "_:BigProject_belgium_water_10m_1000um_r2_3um"
+    }, {
+      "@type" : "Generation",
+      "entity" : "_:BigProject_belgium_water_10m",
+      "activity" : "gen:190fd43b1968737f3501420a6bfd9b74873e32416c6e14fef26238fbe3b197a2"
+    }, {
+      "@type" : "Generation",
+      "entity" : "gen:7576ad666f53f0a260c8b4959bebe7c720599e170cb4faa9f65a467fe0265178",
+      "activity" : "gen:36294ecf35d15ba81da0bb55dfd8ee07934568e28ec56a51774b3e331ed6fd99"
+    }, {
+      "@type" : "Generation",
+      "entity" : "gen:4a86c49fc31d3ba9b8a8e3c961dc7d1ef6cb59769f75fbd2b92aa36ef71b1fa2",
+      "activity" : "gen:36294ecf35d15ba81da0bb55dfd8ee07934568e28ec56a51774b3e331ed6fd99"
+    }, {
+      "@type" : "Generation",
+      "entity" : "_:BigProject_belgium_water_10m_1000um_r1",
+      "activity" : "gen:324df37d2e503522d56f379d8856e4d14599331df280bf0d011fe3060871261a"
+    }, {
+      "@type" : "Generation",
+      "entity" : "_:BigProject_belgium_water_10m_1000um_r2",
+      "activity" : "gen:324df37d2e503522d56f379d8856e4d14599331df280bf0d011fe3060871261a"
+    }, {
+      "@type" : "Generation",
+      "entity" : "_:BigProject_belgium_water_10m_1000um_r2_3um",
+      "activity" : "gen:fd7e5c8ca79a78538b324f8426a3a6c48fdb58a0a3e2718e185455205b48d7e2"
+    }, {
+      "@type" : "Generation",
+      "entity" : "_:StoredSample_r1",
+      "activity" : "gen:09a6f65fe087c3806631e8926fa3cae8e049cfdfa2b0b63fe6de04bc88144e80"
+    }, {
+      "@type" : "Generation",
+      "entity" : "_:StoredSample_r2_3um",
+      "activity" : "gen:67c557a442ca2446b987928fb47c4bbbd59c54395e61f01949d76c06e0106925"
+    }, {
+      "@type" : "Association",
+      "activity" : "gen:190fd43b1968737f3501420a6bfd9b74873e32416c6e14fef26238fbe3b197a2",
+      "agent" : "orcid:0000-0001-0001-0001",
+      "role" : [ {
+        "@value" : "field and laboratory technician"
+      } ]
+    }, {
+      "@type" : "Association",
+      "activity" : "gen:36294ecf35d15ba81da0bb55dfd8ee07934568e28ec56a51774b3e331ed6fd99",
+      "agent" : "orcid:0000-0001-0001-0001",
+      "role" : [ {
+        "@value" : "field and laboratory technician"
+      } ]
+    }, {
+      "@type" : "Association",
+      "activity" : "gen:324df37d2e503522d56f379d8856e4d14599331df280bf0d011fe3060871261a",
+      "agent" : "orcid:0000-0001-0001-0002",
+      "role" : [ {
+        "@value" : "field and laboratory technician"
+      } ]
+    }, {
+      "@type" : "Association",
+      "activity" : "gen:fd7e5c8ca79a78538b324f8426a3a6c48fdb58a0a3e2718e185455205b48d7e2",
+      "agent" : "orcid:0000-0001-0001-0002",
+      "role" : [ {
+        "@value" : "field and laboratory technician"
+      } ]
+    }, {
+      "@type" : "Association",
+      "activity" : "gen:09a6f65fe087c3806631e8926fa3cae8e049cfdfa2b0b63fe6de04bc88144e80",
+      "agent" : "orcid:0000-0001-0001-0002",
+      "role" : [ {
+        "@value" : "field and laboratory technician"
+      } ]
+    }, {
+      "@type" : "Association",
+      "activity" : "gen:67c557a442ca2446b987928fb47c4bbbd59c54395e61f01949d76c06e0106925",
+      "agent" : "orcid:0000-0001-0001-0002",
+      "role" : [ {
+        "@value" : "field and laboratory technician"
+      } ]
+    }, {
+      "@type" : "Attribution",
+      "entity" : "_:ABSPermit_ircc2345678",
+      "agent" : "seadatanet:00000",
+      "dcat:hadRole" : [ {
+        "@value" : "receiving agent"
+      } ]
+    }, {
+      "@type" : "Influence",
+      "influencee" : "_:ABSPermit_ircc2345678",
+      "influencer" : "_:BigProject_belgium_water_10m"
+    }, {
+      "@type" : "Specialization",
+      "specificEntity" : "_:StoredSample_r1",
+      "generalEntity" : "_:StoredSampleCon_r1"
+    }, {
+      "@type" : "Specialization",
+      "specificEntity" : "_:StoredSample_r2_3um",
+      "generalEntity" : "_:StoredSampleCon_r2_3um"
+    } ]
+  } ]
+}

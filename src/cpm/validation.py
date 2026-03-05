@@ -15,11 +15,6 @@ from enum import Enum
 from prov.model import ProvDocument, ProvBundle, ProvRecord, ProvRelation
 from prov.identifier import QualifiedName
 
-# Fix the relative import issue by importing from the src level
-import sys
-import os
-sys.path.append(os.path.dirname(os.path.dirname(__file__)))
-
 
 class ValidationLevel(Enum):
     """Validation severity levels"""
@@ -129,7 +124,7 @@ class TraversalInformationStrategy:
                                 for record in bundle.records:
                                     if hasattr(record, 'identifier') and record.identifier:
                                         part_mapping[record.identifier] = bundle_id
-                except:
+                except Exception:
                     pass  # Skip if bundle structure is not as expected
 
         return part_mapping
@@ -452,7 +447,7 @@ class CpmValidator:
                                     message="Empty bundle detected",
                                     bundle_id=bundle_id
                                 ))
-                except:
+                except Exception:
                     pass
         else:
             results.append(ValidationResult(

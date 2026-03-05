@@ -142,16 +142,12 @@ class CpmDocumentIOMixin:
                     if end_time and end_attr:
                         if end_attr[0] > end_time:
                             include_node = False
-            except:
+            except Exception:
                 pass
 
             if include_node:
                 # Add node to filtered document
-                node_type = 'entity'
-                if isinstance(node.prov_entity, ProvActivity):
-                    node_type = 'activity'
-                elif isinstance(node.prov_entity, ProvAgent):
-                    node_type = 'agent'
+                node_type = node.node_type_name
 
                 # Extract attributes
                 attributes = {}
@@ -164,7 +160,7 @@ class CpmDocumentIOMixin:
 
                 try:
                     filtered_doc.add_node(node_type, node.identifier, attributes, prov_type)
-                except:
+                except Exception:
                     pass  # Skip if unable to add
 
         return filtered_doc
@@ -188,11 +184,7 @@ class CpmDocumentIOMixin:
         for node_id in node_ids:
             node = self.get_node(node_id)
             if node:
-                node_type = 'entity'
-                if isinstance(node.prov_entity, ProvActivity):
-                    node_type = 'activity'
-                elif isinstance(node.prov_entity, ProvAgent):
-                    node_type = 'agent'
+                node_type = node.node_type_name
 
                 # Extract attributes
                 attributes = {}
@@ -206,7 +198,7 @@ class CpmDocumentIOMixin:
                 try:
                     added_node = subgraph_doc.add_node(node_type, node.identifier, attributes, prov_type)
                     added_nodes[str(node.identifier)] = added_node
-                except:
+                except Exception:
                     pass
 
         # Add edges between included nodes
@@ -224,7 +216,7 @@ class CpmDocumentIOMixin:
                                 elif 'generation' in edge_type:
                                     subgraph_doc.add_edge('wasgeneratedby', source_id, target_id)
                                 # Add other edge types as needed
-                            except:
+                            except Exception:
                                 pass
 
         return subgraph_doc
@@ -242,37 +234,104 @@ class CpmDocumentIOMixin:
         try:
             # PROV-N format
             exports['provn'] = prov_doc.get_provn()
-        except:
+        except Exception:
             exports['provn'] = "Error: Could not export to PROV-N"
 
         try:
             # JSON format
             exports['json'] = prov_doc.serialize(format='json')
-        except:
+        except Exception:
             exports['json'] = "Error: Could not export to JSON"
 
         try:
             # XML format
             exports['xml'] = prov_doc.serialize(format='xml')
-        except:
+        except Exception:
             exports['xml'] = "Error: Could not export to XML"
 
         return exports
 
+    def _get_existing_identifiers(self) -> Set[str]:
+        """Return a set of stringified identifiers for all nodes in this document."""
+        return {str(n.identifier) for n in self.get_all_nodes()}
+
+    def _add_records_from(self, other_doc: ProvDocument, skip_existing: bool = False):
+        """
+        Add records from *other_doc* into this document.
+
+        Args:
+            other_doc: Source PROV document whose records will be imported.
+            skip_existing: If True, skip records whose identifier already
+                           exists in this document (used by keep_first).
+        """
+        existing_ids = self._get_existing_identifiers() if skip_existing else set()
+
+        for record in other_doc.get_records():
+            record_id = str(record.identifier) if hasattr(record, 'identifier') and record.identifier else None
+            if skip_existing and record_id and record_id in existing_ids:
+                continue
+            try:
+                if isinstance(record, ProvEntity):
+                    self.add_node('entity', record.identifier,
+                                  {str(k): v for k, v in record.attributes if k != PROV_TYPE})
+                elif isinstance(record, ProvActivity):
+                    self.add_node('activity', record.identifier,
+                                  {str(k): v for k, v in record.attributes if k != PROV_TYPE})
+                elif isinstance(record, ProvAgent):
+                    self.add_node('agent', record.identifier,
+                                  {str(k): v for k, v in record.attributes if k != PROV_TYPE})
+            except Exception:
+                pass  # Skip records that cannot be added (e.g. duplicates)
+
+        # Also import records from bundles inside other_doc (only ProvDocument has bundles)
+        if isinstance(other_doc, ProvDocument):
+            for bundle in other_doc.bundles:
+                self._add_records_from(bundle, skip_existing=skip_existing)
+
     def _merge_records_keep_both(self, other_doc: ProvDocument):
-        """Merge records keeping both in case of conflicts."""
-        # Implementation would merge PROV records with conflict resolution
-        pass
+        """
+        Merge records keeping both in case of conflicts.
+
+        All records from *other_doc* are added. If an identifier already
+        exists the new record is silently skipped (PROV does not allow true
+        duplicates), but non-conflicting records are always added.
+        """
+        self._add_records_from(other_doc, skip_existing=False)
 
     def _merge_records_keep_first(self, other_doc: ProvDocument):
-        """Merge records keeping first in case of conflicts."""
-        # Implementation would merge PROV records preferring current
-        pass
+        """
+        Merge records keeping first (this document's) in case of conflicts.
+
+        Only records whose identifier does NOT already exist in this
+        document are imported from *other_doc*.
+        """
+        self._add_records_from(other_doc, skip_existing=True)
 
     def _merge_records_keep_second(self, other_doc: ProvDocument):
-        """Merge records keeping second in case of conflicts."""
-        # Implementation would merge PROV records preferring other
-        pass
+        """
+        Merge records keeping second (other document's) in case of conflicts.
+
+        Conflicting records in this document are removed first, then all
+        records from *other_doc* are added.
+        """
+        other_ids: Set[str] = set()
+        for record in other_doc.get_records():
+            if hasattr(record, 'identifier') and record.identifier:
+                other_ids.add(str(record.identifier))
+        for bundle in other_doc.bundles:
+            for record in bundle.get_records():
+                if hasattr(record, 'identifier') and record.identifier:
+                    other_ids.add(str(record.identifier))
+
+        # Remove conflicting nodes from this document
+        for node in list(self.get_all_nodes()):
+            if str(node.identifier) in other_ids:
+                try:
+                    self.remove_node(node.identifier)
+                except Exception:
+                    pass
+
+        self._add_records_from(other_doc, skip_existing=False)
 
     def equals(self, other: 'CpmDocument') -> bool:
         """

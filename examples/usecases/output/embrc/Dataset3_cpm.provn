@@ -1,0 +1,21 @@
+document
+  prefix schema <https://schema.org/>
+  prefix cpm <https://www.commonprovenancemodel.org/cpm-namespace-v1-0/>
+  prefix sosa <http://www.w3.org/ns/sosa/>
+  prefix dct <http://purl.org/dc/terms/>
+  prefix embrc <http://embrc.eu/ns/>
+  
+  bundle embrc:Dataset3_storage
+    prefix embrc <http://embrc.eu/ns/>
+    prefix cpm <https://www.commonprovenancemodel.org/cpm-namespace-v1-0/>
+    prefix schema <https://schema.org/>
+    
+    activity(embrc:dataset3_mainActivity, -, -, [prov:type='cpm:mainActivity', schema:name="Dataset 3 Processing"])
+    entity(embrc:dataset3_backwardConnector, [prov:type='cpm:backwardConnector'])
+    entity(embrc:dataset3_forwardConnector, [prov:type='cpm:forwardConnector'])
+    agent(embrc:orcid.org_0000-0001-0001-0002, [prov:type='cpm:senderAgent', schema:name="J. Gerschwin"])
+    used(embrc:dataset3_mainActivity, embrc:dataset3_backwardConnector, -)
+    wasGeneratedBy(embrc:dataset3_forwardConnector, embrc:dataset3_mainActivity, -)
+    wasDerivedFrom(embrc:dataset3_forwardConnector, embrc:dataset3_backwardConnector, -, -, -)
+  endBundle
+endDocument

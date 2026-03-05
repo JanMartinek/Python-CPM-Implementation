@@ -232,7 +232,7 @@ class DividedGraphEdge(GraphEdge):
                     relation.identifier == duplicate_relation.identifier):
                 # Merge attributes - simplified implementation
                 if hasattr(duplicate_relation, 'attributes') and hasattr(relation, 'attributes'):
-                    # In full implementation, would properly merge PROV attributes
+                    # TODO: Properly merge PROV attributes
                     pass
                 return
 
@@ -298,7 +298,7 @@ class MergedGraphEdge(GraphEdge):
                 self.prov_relation.identifier == duplicate_relation.identifier):
             # Merge attributes - simplified implementation
             if hasattr(duplicate_relation, 'attributes') and hasattr(self.prov_relation, 'attributes'):
-                # In full implementation, would properly merge PROV attributes
+                # TODO: Properly merge PROV attributes
                 pass
 
     def clone(self) -> 'GraphEdge':

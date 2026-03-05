@@ -1,0 +1,23 @@
+document
+  prefix schema <https://schema.org/>
+  prefix cpm <https://www.commonprovenancemodel.org/cpm-namespace-v1-0/>
+  prefix sosa <http://www.w3.org/ns/sosa/>
+  prefix dct <http://purl.org/dc/terms/>
+  prefix embrc <http://embrc.eu/ns/>
+  
+  bundle embrc:Dataset2_storage
+    prefix embrc <http://embrc.eu/ns/>
+    prefix cpm <https://www.commonprovenancemodel.org/cpm-namespace-v1-0/>
+    prefix schema <https://schema.org/>
+    prefix sosa <http://www.w3.org/ns/sosa/>
+    
+    activity(embrc:dataset2_mainActivity, -, -, [prov:type='cpm:mainActivity', schema:name="Dataset 2 Processing"])
+    entity(embrc:dataset2_backwardConnector, [prov:type='cpm:backwardConnector'])
+    entity(embrc:dataset2_forwardConnector, [prov:type='cpm:forwardConnector'])
+    agent(embrc:orcid.org_0000-0001-0001-0002, [prov:type='cpm:senderAgent', schema:name="J. Gerschwin"])
+    entity(embrc:sample_BigProject_belgium_water_10m_1000um_r1, [prov:type='sosa:Sample', schema:name="BigProject_belgium_water_10m_1000um_r1", schema:description="Water sample collected from 10m depth and filtered at 1000um"])
+    used(embrc:dataset2_mainActivity, embrc:dataset2_backwardConnector, -)
+    wasGeneratedBy(embrc:dataset2_forwardConnector, embrc:dataset2_mainActivity, -)
+    wasDerivedFrom(embrc:dataset2_forwardConnector, embrc:dataset2_backwardConnector, -, -, -)
+  endBundle
+endDocument

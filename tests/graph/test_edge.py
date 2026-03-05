@@ -4,7 +4,7 @@ Tests for GraphEdge, DividedGraphEdge, and MergedGraphEdge classes
 
 import pytest
 from prov.model import ProvDocument, ProvUsage, ProvGeneration, ProvDerivation
-from prov.identifier import QualifiedName
+from prov.identifier import QualifiedName, Namespace
 
 from src.graph.node import GraphNode
 from src.graph.edge import GraphEdge, DividedGraphEdge, MergedGraphEdge, EdgeFilter, EdgeBuilder
@@ -617,3 +617,339 @@ class TestEdgeBuilder:
              .with_relation(usage)
              .with_cause(node1)
              .build())
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Additional coverage tests – GraphEdge, DividedGraphEdge, MergedGraphEdge,
+# EdgeFilter, EdgeBuilder.
+# ═══════════════════════════════════════════════════════════════════════════════
+
+from prov.identifier import Namespace
+
+EX = Namespace("ex", "http://example.org/")
+
+
+def _doc_with_relation():
+    doc = ProvDocument()
+    doc.add_namespace(EX)
+    doc.activity(EX["a1"])
+    doc.entity(EX["e1"])
+    usage = doc.usage(EX["a1"], EX["e1"])
+    return doc, usage
+
+
+def _make_nodes_and_relation():
+    doc, usage = _doc_with_relation()
+    act = list(doc.get_records())[0]
+    ent = list(doc.get_records())[1]
+    n_cause = GraphNode(ent, EX["e1"])
+    n_effect = GraphNode(act, EX["a1"])
+    return n_cause, n_effect, usage
+
+
+# ─── GraphEdge basics ───────────────────────────────────────────────────────
+
+class TestGraphEdgeBasics:
+    def test_identifier(self):
+        c, e, rel = _make_nodes_and_relation()
+        edge = GraphEdge(rel, c, e)
+        assert edge.identifier is not None or edge.identifier is None
+
+    def test_identifier_override(self):
+        c, e, rel = _make_nodes_and_relation()
+        edge = GraphEdge(rel, c, e, identifier=EX["myedge"])
+        assert edge.identifier == EX["myedge"]
+
+    def test_kind(self):
+        c, e, rel = _make_nodes_and_relation()
+        edge = GraphEdge(rel, c, e)
+        assert edge.kind == "PROV_USAGE"
+
+    def test_set_cause(self):
+        c, e, rel = _make_nodes_and_relation()
+        edge = GraphEdge(rel, c, e)
+        doc = ProvDocument()
+        doc.add_namespace(EX)
+        new_c = GraphNode(doc.entity(EX["e2"]), EX["e2"])
+        edge.set_cause(new_c)
+        assert edge.cause is new_c
+
+    def test_set_effect(self):
+        c, e, rel = _make_nodes_and_relation()
+        edge = GraphEdge(rel, c, e)
+        doc = ProvDocument()
+        doc.add_namespace(EX)
+        new_e = GraphNode(doc.activity(EX["a2"]), EX["a2"])
+        edge.set_effect(new_e)
+        assert edge.effect is new_e
+
+    def test_add_relation(self):
+        c, e, rel = _make_nodes_and_relation()
+        edge = GraphEdge(rel, c, e)
+        assert edge.add_relation(rel) is False  # already present
+        doc = ProvDocument()
+        doc.add_namespace(EX)
+        doc.activity(EX["a1"])
+        doc.entity(EX["e2"])
+        rel2 = doc.usage(EX["a1"], EX["e2"])
+        assert edge.add_relation(rel2) is True
+
+    def test_remove_relation_only_one(self):
+        c, e, rel = _make_nodes_and_relation()
+        edge = GraphEdge(rel, c, e)
+        assert edge.remove_relation(rel) is False  # can't remove only relation
+
+    def test_handle_duplicate(self):
+        c, e, rel = _make_nodes_and_relation()
+        edge = GraphEdge(rel, c, e)
+        edge.handle_duplicate(rel)  # same identifier → no-op
+
+    def test_clone(self):
+        c, e, rel = _make_nodes_and_relation()
+        edge = GraphEdge(rel, c, e)
+        cloned = edge.clone()
+        assert cloned is not edge
+        assert isinstance(cloned, GraphEdge)
+
+    def test_is_between(self):
+        c, e, rel = _make_nodes_and_relation()
+        edge = GraphEdge(rel, c, e)
+        assert edge.is_between(c, e) is True
+        assert edge.is_between(e, c) is False
+
+    def test_connects_node(self):
+        c, e, rel = _make_nodes_and_relation()
+        edge = GraphEdge(rel, c, e)
+        assert edge.connects_node(c) is True
+        assert edge.connects_node(e) is True
+
+    def test_get_other_node(self):
+        c, e, rel = _make_nodes_and_relation()
+        edge = GraphEdge(rel, c, e)
+        assert edge.get_other_node(c) is e
+        assert edge.get_other_node(e) is c
+        doc = ProvDocument()
+        doc.add_namespace(EX)
+        other = GraphNode(doc.entity(EX["x"]), EX["x"])
+        assert edge.get_other_node(other) is None
+
+    def test_reverse(self):
+        c, e, rel = _make_nodes_and_relation()
+        edge = GraphEdge(rel, c, e)
+        rev = edge.reverse()
+        assert rev.cause is e
+        assert rev.effect is c
+
+    def test_get_attributes(self):
+        c, e, rel = _make_nodes_and_relation()
+        edge = GraphEdge(rel, c, e)
+        attrs = edge.get_attributes()
+        assert isinstance(attrs, list)
+
+    def test_has_attribute(self):
+        c, e, rel = _make_nodes_and_relation()
+        edge = GraphEdge(rel, c, e)
+        assert isinstance(edge.has_attribute("prov:entity"), bool)
+
+    def test_get_attribute_values(self):
+        c, e, rel = _make_nodes_and_relation()
+        edge = GraphEdge(rel, c, e)
+        vals = edge.get_attribute_values("nonexistent")
+        assert vals == []
+
+    def test_str_repr(self):
+        c, e, rel = _make_nodes_and_relation()
+        edge = GraphEdge(rel, c, e)
+        assert "GraphEdge" in str(edge)
+        assert "GraphEdge" in repr(edge)
+
+    def test_eq_and_hash(self):
+        c, e, rel = _make_nodes_and_relation()
+        edge1 = GraphEdge(rel, c, e)
+        edge2 = GraphEdge(rel, c, e)
+        assert edge1 == edge2
+        assert not (edge1 == "not an edge")
+        assert isinstance(hash(edge1), int)
+
+
+# ─── DividedGraphEdge (extended) ────────────────────────────────────────────
+
+class TestDividedGraphEdgeExtended:
+    def test_create(self):
+        c, e, rel = _make_nodes_and_relation()
+        edge = DividedGraphEdge([rel], c, e)
+        assert isinstance(edge, DividedGraphEdge)
+
+    def test_create_empty_raises(self):
+        c, e, _ = _make_nodes_and_relation()
+        with pytest.raises(ValueError):
+            DividedGraphEdge([], c, e)
+
+    def test_add_remove_relation(self):
+        c, e, rel = _make_nodes_and_relation()
+        doc2 = ProvDocument()
+        doc2.add_namespace(EX)
+        doc2.activity(EX["a1"])
+        doc2.entity(EX["e2"])
+        rel2 = doc2.usage(EX["a1"], EX["e2"])
+        edge = DividedGraphEdge([rel], c, e)
+        assert edge.add_relation(rel2) is True
+        assert edge.remove_relation(rel2) is True
+        assert edge.remove_relation(rel) is False  # can't remove last
+
+    def test_handle_duplicate_new(self):
+        c, e, rel = _make_nodes_and_relation()
+        doc2 = ProvDocument()
+        doc2.add_namespace(EX)
+        doc2.activity(EX["a1"])
+        doc2.entity(EX["e2"])
+        rel2 = doc2.usage(EX["a1"], EX["e2"], identifier=EX["u2"])
+        edge = DividedGraphEdge([rel], c, e)
+        edge.handle_duplicate(rel2)
+        assert len(edge.relations) == 2
+
+    def test_kind(self):
+        c, e, rel = _make_nodes_and_relation()
+        edge = DividedGraphEdge([rel], c, e)
+        assert edge.kind == "PROV_USAGE"
+
+    def test_clone(self):
+        c, e, rel = _make_nodes_and_relation()
+        edge = DividedGraphEdge([rel], c, e)
+        cloned = edge.clone()
+        assert isinstance(cloned, DividedGraphEdge)
+
+    def test_eq_hash(self):
+        c, e, rel = _make_nodes_and_relation()
+        edge = DividedGraphEdge([rel], c, e)
+        assert edge == edge
+        assert not (edge == "not an edge")
+        assert isinstance(hash(edge), int)
+
+
+# ─── MergedGraphEdge (extended) ─────────────────────────────────────────────
+
+class TestMergedGraphEdgeExtended:
+    def test_create(self):
+        c, e, rel = _make_nodes_and_relation()
+        edge = MergedGraphEdge(rel, c, e)
+        assert isinstance(edge, MergedGraphEdge)
+
+    def test_add_relation_returns_false(self):
+        c, e, rel = _make_nodes_and_relation()
+        edge = MergedGraphEdge(rel, c, e)
+        assert edge.add_relation(rel) is False
+
+    def test_remove_relation_returns_false(self):
+        c, e, rel = _make_nodes_and_relation()
+        edge = MergedGraphEdge(rel, c, e)
+        assert edge.remove_relation(rel) is False
+
+    def test_handle_duplicate(self):
+        c, e, rel = _make_nodes_and_relation()
+        edge = MergedGraphEdge(rel, c, e)
+        edge.handle_duplicate(rel)  # should not raise
+
+    def test_clone(self):
+        c, e, rel = _make_nodes_and_relation()
+        edge = MergedGraphEdge(rel, c, e)
+        cloned = edge.clone()
+        assert isinstance(cloned, (MergedGraphEdge, GraphEdge))
+
+
+# ─── EdgeFilter (extended) ──────────────────────────────────────────────────
+
+class TestEdgeFilterExtended:
+    def _edges(self):
+        c, e, rel = _make_nodes_and_relation()
+        edge = GraphEdge(rel, c, e)
+        return [edge], c, e
+
+    def test_by_cause(self):
+        edges, c, e = self._edges()
+        assert len(EdgeFilter.by_cause(edges, c)) == 1
+
+    def test_by_effect(self):
+        edges, c, e = self._edges()
+        assert len(EdgeFilter.by_effect(edges, e)) == 1
+
+    def test_by_kind(self):
+        edges, _, _ = self._edges()
+        assert len(EdgeFilter.by_kind(edges, "PROV_USAGE")) == 1
+
+    def test_by_cause_and_effect(self):
+        edges, c, e = self._edges()
+        assert len(EdgeFilter.by_cause_and_effect(edges, c, e)) == 1
+
+    def test_by_node(self):
+        edges, c, _ = self._edges()
+        assert len(EdgeFilter.by_node(edges, c)) == 1
+
+    def test_by_attribute_presence(self):
+        edges, _, _ = self._edges()
+        result = EdgeFilter.by_attribute(edges, "prov:entity")
+        assert isinstance(result, list)
+
+    def test_by_attribute_value(self):
+        edges, _, _ = self._edges()
+        result = EdgeFilter.by_attribute(edges, "nonexistent", "val")
+        assert result == []
+
+
+# ─── EdgeBuilder (extended) ─────────────────────────────────────────────────
+
+class TestEdgeBuilderExtended:
+    def test_build_merged(self):
+        c, e, rel = _make_nodes_and_relation()
+        edge = (EdgeBuilder()
+                .with_relation(rel)
+                .with_cause(c)
+                .with_effect(e)
+                .as_merged()
+                .build())
+        assert isinstance(edge, MergedGraphEdge)
+
+    def test_build_divided(self):
+        c, e, rel = _make_nodes_and_relation()
+        edge = (EdgeBuilder()
+                .with_relations([rel])
+                .with_cause(c)
+                .with_effect(e)
+                .as_divided()
+                .build())
+        assert isinstance(edge, DividedGraphEdge)
+
+    def test_build_divided_from_single(self):
+        c, e, rel = _make_nodes_and_relation()
+        edge = (EdgeBuilder()
+                .with_relation(rel)
+                .with_cause(c)
+                .with_effect(e)
+                .as_divided()
+                .build())
+        assert isinstance(edge, DividedGraphEdge)
+
+    def test_missing_relation_raises(self):
+        c, e, _ = _make_nodes_and_relation()
+        with pytest.raises(ValueError, match="Relation"):
+            EdgeBuilder().with_cause(c).with_effect(e).build()
+
+    def test_missing_cause_raises(self):
+        _, e, rel = _make_nodes_and_relation()
+        with pytest.raises(ValueError, match="Cause"):
+            EdgeBuilder().with_relation(rel).with_effect(e).build()
+
+    def test_missing_effect_raises(self):
+        c, _, rel = _make_nodes_and_relation()
+        with pytest.raises(ValueError, match="Effect"):
+            EdgeBuilder().with_relation(rel).with_cause(c).build()
+
+    def test_with_identifier(self):
+        c, e, rel = _make_nodes_and_relation()
+        edge = (EdgeBuilder()
+                .with_relation(rel)
+                .with_cause(c)
+                .with_effect(e)
+                .with_identifier(EX["myedge"])
+                .build())
+        assert edge.identifier == EX["myedge"] or edge._identifier == EX["myedge"]

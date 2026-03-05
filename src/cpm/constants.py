@@ -22,6 +22,8 @@ CPM_FORWARD_CONNECTOR = CPM["ForwardConnector"]
 CPM_SENDER_AGENT = CPM["SenderAgent"]
 CPM_RECEIVER_AGENT = CPM["ReceiverAgent"]
 CPM_IDENTIFIER_ENTITY = CPM["IdentifierEntity"]
+CPM_SUB_ACTIVITY = CPM["SubActivity"]
+CPM_STORAGE_ACTIVITY = CPM["StorageActivity"]
 
 # CPM Attributes
 CPM_REFERENCED_BUNDLE_ID = CPM["referencedBundleId"]

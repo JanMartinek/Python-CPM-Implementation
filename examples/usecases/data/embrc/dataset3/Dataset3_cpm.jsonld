@@ -1,0 +1,186 @@
+{
+  "@context" : [ {
+    "schema" : "https://schema.org/",
+    "gen" : "gen/",
+    "seadatanet" : "https://edmo.seadatanet.org/report/",
+    "cpm" : "https://www.commonprovenancemodel.org/cpm-namespace-v1-0/",
+    "dct" : "http://purl.org/dc/terms/",
+    "xsd" : "http://www.w3.org/2001/XMLSchema#",
+    "orcid" : "https://orcid.org/",
+    "prov" : "http://www.w3.org/ns/prov#",
+    "_" : "https://openprovenance.org/blank#"
+  }, "https://openprovenance.org/prov-jsonld/context.jsonld" ],
+  "@graph" : [ {
+    "@type" : "Bundle",
+    "@context" : [ { }, "https://openprovenance.org/prov-jsonld/context.jsonld" ],
+    "@id" : "_:SpeciesIdentificationBundle",
+    "@graph" : [ {
+      "@type" : "Activity",
+      "@id" : "_:SpeciesIdentification",
+      "dct:hasPart" : [ "_:FlowCamSpeciesIdentification" ],
+      "type" : [ "cpm:mainActivity" ]
+    }, {
+      "@type" : "Usage",
+      "activity" : "_:SpeciesIdentification",
+      "entity" : "_:ProcessedSampleCon"
+    }, {
+      "@type" : "Generation",
+      "entity" : "_:IdentifiedSpeciesCon",
+      "activity" : "_:SpeciesIdentification"
+    }, {
+      "@type" : "Entity",
+      "@id" : "_:ProcessedSampleCon",
+      "type" : [ "cpm:backwardConnector" ],
+      "cpm:referencedBundleId" : [ "_:ProcessingBundle" ]
+    }, {
+      "@type" : "Derivation",
+      "generatedEntity" : "_:ProcessedSampleCon",
+      "usedEntity" : "_:StoredSampleCon_r1"
+    }, {
+      "@type" : "Attribution",
+      "entity" : "_:ProcessedSampleCon",
+      "agent" : "_:NiceMarineStation"
+    }, {
+      "@type" : "Entity",
+      "@id" : "_:StoredSampleCon_r1",
+      "type" : [ "cpm:backwardConnector" ],
+      "cpm:referencedBundleId" : [ "_:SamplingBundle" ]
+    }, {
+      "@type" : "Attribution",
+      "entity" : "_:StoredSampleCon_r1",
+      "agent" : "_:NiceMarineStation"
+    }, {
+      "@type" : "Entity",
+      "@id" : "_:IdentifiedSpeciesCon",
+      "type" : [ "cpm:forwardConnector" ]
+    }, {
+      "@type" : "Derivation",
+      "generatedEntity" : "_:IdentifiedSpeciesCon",
+      "usedEntity" : "_:ProcessedSampleCon"
+    }, {
+      "@type" : "Agent",
+      "@id" : "_:NiceMarineStation",
+      "type" : [ "cpm:senderAgent" ]
+    }, {
+      "@type" : "Entity",
+      "@id" : "_:classification_QC",
+      "schema:name" : [ {
+        "@value" : "classification QC"
+      } ],
+      "schema:description" : [ {
+        "@value" : "Manual filtering of the flowcam outputs, to remove misidentifications. Method steps: (1) visual inspection of the classified images by a first plankton expert, who suggested reclassifications or removal of the images from the dataset (2) visual inspection and confirmation/rejection of suggestions by a second export (3) reclassification in the image metadata and the spreadsheet for those that both experts agreed on, and agreed rejected results removed from the dataset."
+      } ],
+      "type" : [ "schema:Thing", "schema:CreativeWork" ]
+    }, {
+      "@type" : "Entity",
+      "@id" : "gen:db2aef1f9e9cdf745897953efba7931099655ee21f323526decd0ad11b4cc0e0",
+      "schema:description" : [ {
+        "@value" : "raw images from /Users/NMSlab/flowcam/20210101/BigProject/raw, settings in file flowcam-settings.txt (see dataset), and reference library used was  FlowCam_ReferenceLibrary_2024"
+      } ],
+      "type" : [ "schema:MediaObject" ]
+    }, {
+      "@type" : "Entity",
+      "@id" : "gen:ac6f25ecc17ae20cbb5789ee654db6d401c771b4ad4c9e971a0d960c3b596ac4",
+      "schema:description" : [ {
+        "@value" : "images in zip file Plankton_species_image.zip, results in Plankton_species_numbers.csv"
+      } ],
+      "type" : [ "schema:MediaObject" ]
+    }, {
+      "@type" : "Entity",
+      "@id" : "_:VisualSpreadsheet_FlowCam",
+      "schema:name" : [ {
+        "@value" : "VisualSpreadsheet FlowCam Micro software"
+      } ],
+      "schema:accessibilitySummary" : [ {
+        "@value" : "file flowcam-settings.txt which comes with this dataset"
+      } ],
+      "schema:description" : [ {
+        "@value" : "The software that comes with this FlowCam, bought in 2010"
+      } ],
+      "type" : [ "schema:SoftwareApplication", "schema:Thing" ]
+    }, {
+      "@type" : "Activity",
+      "@id" : "_:FlowCamSpeciesIdentification",
+      "startTime" : "2021-01-01T00:00:00.000+01:00",
+      "schema:name" : [ {
+        "@value" : "FlowCam species identification"
+      } ],
+      "schema:result" : [ {
+        "@value" : "gen:ac6f25ecc17ae20cbb5789ee654db6d401c771b4ad4c9e971a0d960c3b596ac4"
+      } ],
+      "dct:type" : [ {
+        "@value" : "Data Processing, FlowCam species identification"
+      } ],
+      "schema:description" : [ {
+        "@value" : "Identification of species on images from the FlowCam, using the FlowCam software"
+      } ],
+      "type" : [ "schema:Action" ],
+      "schema:object" : [ {
+        "@value" : "gen:db2aef1f9e9cdf745897953efba7931099655ee21f323526decd0ad11b4cc0e0"
+      } ]
+    }, {
+      "@type" : "Agent",
+      "@id" : "seadatanet:00000",
+      "schema:name" : [ {
+        "@value" : "Nice Marine Station"
+      } ],
+      "schema:email" : [ {
+        "@value" : "info@nicemarinestation.eu"
+      } ],
+      "schema:identifier" : [ {
+        "@value" : "seadatanet:00000"
+      } ],
+      "schema:mainEntityOfPage" : [ {
+        "@value" : "https://NiceMarineStation.eu"
+      } ],
+      "type" : [ "schema:Organization" ]
+    }, {
+      "@type" : "Agent",
+      "@id" : "orcid:0000-0001-0001-0002",
+      "schema:name" : [ {
+        "@value" : "J. Gerschwin"
+      } ],
+      "schema:email" : [ {
+        "@value" : "jg@somewhere.com"
+      } ],
+      "schema:identifier" : [ {
+        "@value" : "orcid:0000-0001-0001-0002"
+      } ],
+      "schema:affiliation" : [ {
+        "@value" : "seadatanet:00000"
+      } ],
+      "type" : [ "schema:Person" ]
+    }, {
+      "@type" : "Usage",
+      "activity" : "_:FlowCamSpeciesIdentification",
+      "entity" : "_:VisualSpreadsheet_FlowCam"
+    }, {
+      "@type" : "Usage",
+      "activity" : "_:FlowCamSpeciesIdentification",
+      "entity" : "_:classification_QC"
+    }, {
+      "@type" : "Usage",
+      "activity" : "_:FlowCamSpeciesIdentification",
+      "entity" : "gen:db2aef1f9e9cdf745897953efba7931099655ee21f323526decd0ad11b4cc0e0"
+    }, {
+      "@type" : "Generation",
+      "entity" : "gen:ac6f25ecc17ae20cbb5789ee654db6d401c771b4ad4c9e971a0d960c3b596ac4",
+      "activity" : "_:FlowCamSpeciesIdentification"
+    }, {
+      "@type" : "Association",
+      "activity" : "_:FlowCamSpeciesIdentification",
+      "agent" : "orcid:0000-0001-0001-0002",
+      "role" : [ {
+        "@value" : "lab technician"
+      } ]
+    }, {
+      "@type" : "Specialization",
+      "specificEntity" : "gen:db2aef1f9e9cdf745897953efba7931099655ee21f323526decd0ad11b4cc0e0",
+      "generalEntity" : "_:ProcessedSampleCon"
+    }, {
+      "@type" : "Specialization",
+      "specificEntity" : "gen:ac6f25ecc17ae20cbb5789ee654db6d401c771b4ad4c9e971a0d960c3b596ac4",
+      "generalEntity" : "_:IdentifiedSpeciesCon"
+    } ]
+  } ]
+}

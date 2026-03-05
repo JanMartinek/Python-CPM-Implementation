@@ -1,0 +1,127 @@
+{
+  "@context" : [ {
+    "@vocab" : "http://www.w3.org/ns/prov#",
+    "sosa" : "http://www.w3.org/ns/sosa/",
+    "dct" : "http://purl.org/dc/terms/",
+    "schema" : "https://schema.org/",
+    "prov" : "http://www.w3.org/ns/prov#",
+    "_" : "https://openprovenance.org/blank#",
+    "gen" : "gen/",
+    "dcat" : "http://www.w3.org/ns/dcat#",
+    "orcid" : "https://orcid.org/",
+    "seadatanet" : "https://edmo.seadatanet.org/report/"
+  }, "https://openprovenance.org/prov-jsonld/context.jsonld" ],
+  "@graph" : [ {
+    "@type" : "Agent",
+    "@id" : "orcid:0000-0001-0001-0002",
+    "schema:name" : [ {
+      "@value" : "J. Gerschwin"
+    } ],
+    "schema:identifier" : [ {
+      "@value" : "orcid:0000-0001-0001-0002"
+    } ],
+    "schema:email" : [ {
+      "@value" : "jg@somewhere.com"
+    } ],
+    "schema:affiliation" : [ {
+      "@value" : "seadatanet:00000"
+    } ],
+    "type" : [ "schema:Person" ]
+  }, {
+    "@type" : "Agent",
+    "@id" : "seadatanet:00000",
+    "schema:name" : [ {
+      "@value" : "Nice Marine Station"
+    } ],
+    "schema:mainEntityOfPage" : [ {
+      "@value" : "https://NiceMarineStation.eu"
+    } ],
+    "schema:email" : [ {
+      "@value" : "info@nicemarinestation.eu"
+    } ],
+    "schema:identifier" : [ {
+      "@value" : "seadatanet:00000"
+    } ],
+    "type" : [ "schema:Organization" ]
+  }, {
+    "@type" : "Entity",
+    "@id" : "_:VisualSpreadsheet_FlowCam",
+    "schema:name" : [ {
+      "@value" : "VisualSpreadsheet FlowCam Micro software"
+    } ],
+    "schema:description" : [ {
+      "@value" : "The software that comes with this FlowCam, bought in 2010"
+    } ],
+    "schema:accessibilitySummary" : [ {
+      "@value" : "file flowcam-settings.txt which comes with this dataset"
+    } ],
+    "type" : [ "schema:Thing", "schema:SoftwareApplication" ]
+  }, {
+    "@type" : "Entity",
+    "@id" : "_:classification_QC",
+    "schema:name" : [ {
+      "@value" : "classification QC"
+    } ],
+    "schema:description" : [ {
+      "@value" : "Manual filtering of the flowcam outputs, to remove misidentifications. Method steps: (1) visual inspection of the classified images by a first plankton expert, who suggested reclassifications or removal of the images from the dataset (2) visual inspection and confirmation/rejection of suggestions by a second export (3) reclassification in the image metadata and the spreadsheet for those that both experts agreed on, and agreed rejected results removed from the dataset."
+    } ],
+    "type" : [ "schema:Thing", "schema:CreativeWork" ]
+  }, {
+    "@type" : "Activity",
+    "@id" : "_:FlowCamSpeciesIdentification",
+    "dct:type" : [ {
+      "@value" : "Data Processing, FlowCam species identification"
+    } ],
+    "schema:name" : [ {
+      "@value" : "FlowCam species identification"
+    } ],
+    "schema:description" : [ {
+      "@value" : "Identification of species on images from the FlowCam, using the FlowCam software"
+    } ],
+    "schema:object" : [ {
+      "@value" : "gen:db2aef1f9e9cdf745897953efba7931099655ee21f323526decd0ad11b4cc0e0"
+    } ],
+    "schema:result" : [ {
+      "@value" : "gen:ac6f25ecc17ae20cbb5789ee654db6d401c771b4ad4c9e971a0d960c3b596ac4"
+    } ],
+    "startTime" : "2021-01-01",
+    "type" : [ "schema:Action" ]
+  }, {
+    "@type" : "Usage",
+    "entity" : "_:VisualSpreadsheet_FlowCam",
+    "activity" : "_:FlowCamSpeciesIdentification"
+  }, {
+    "@type" : "Usage",
+    "entity" : "_:classification_QC",
+    "activity" : "_:FlowCamSpeciesIdentification"
+  }, {
+    "@type" : "Association",
+    "agent" : "orcid:0000-0001-0001-0002",
+    "activity" : "_:FlowCamSpeciesIdentification",
+    "role" : [ {
+      "@value" : "lab technician"
+    } ]
+  }, {
+    "@type" : "Entity",
+    "schema:description" : [ {
+      "@value" : "raw images from /Users/NMSlab/flowcam/20210101/BigProject/raw, settings in file flowcam-settings.txt (see dataset), and reference library used was  FlowCam_ReferenceLibrary_2024"
+    } ],
+    "@id" : "gen:db2aef1f9e9cdf745897953efba7931099655ee21f323526decd0ad11b4cc0e0",
+    "type" : [ "schema:MediaObject" ]
+  }, {
+    "@type" : "Usage",
+    "entity" : "gen:db2aef1f9e9cdf745897953efba7931099655ee21f323526decd0ad11b4cc0e0",
+    "activity" : "_:FlowCamSpeciesIdentification"
+  }, {
+    "@type" : "Entity",
+    "schema:description" : [ {
+      "@value" : "images in zip file Plankton_species_image.zip, results in Plankton_species_numbers.csv"
+    } ],
+    "@id" : "gen:ac6f25ecc17ae20cbb5789ee654db6d401c771b4ad4c9e971a0d960c3b596ac4",
+    "type" : [ "schema:MediaObject" ]
+  }, {
+    "@type" : "Generation",
+    "activity" : "_:FlowCamSpeciesIdentification",
+    "entity" : "gen:ac6f25ecc17ae20cbb5789ee654db6d401c771b4ad4c9e971a0d960c3b596ac4"
+  } ]
+}

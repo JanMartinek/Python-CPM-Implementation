@@ -9,8 +9,14 @@ This example demonstrates advanced features of the Python implementation:
 5. Transformation pipelines
 """
 
+import os
+import sys
 from pathlib import Path
 import json
+
+# Add project root to path for imports
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
+
 from src.cpm.template import (
     TraversalInformationDeserializer,
     TraversalInformationSerializer,

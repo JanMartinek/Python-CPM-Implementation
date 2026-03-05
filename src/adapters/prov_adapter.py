@@ -71,7 +71,7 @@ class ProvAdapter:
                         attr_qname = graph._prov_document.valid_qualified_name(attr_name)
                         if attr_qname:
                             attr_list.append((attr_qname, attr_value))
-                    except:
+                    except Exception:
                         continue
 
         entity = graph._prov_document.entity(qualified_id, other_attributes=attr_list)

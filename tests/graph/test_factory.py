@@ -479,3 +479,296 @@ class TestFactoryGlobalFunctions:
         merged_wrapper = merge_graphs([wrapper1, wrapper2], factory_type="DIVIDED")
 
         assert len(merged_wrapper.get_nodes()) >= 2
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Additional coverage tests – DividedCpmFactory, MergedCpmFactory,
+# CpmFactoryManager, and module-level functions.
+# ═══════════════════════════════════════════════════════════════════════════════
+
+from prov.identifier import Namespace
+from src.graph.factory import get_factory_manager
+
+EX = Namespace("ex", "http://example.org/")
+
+
+def _make_entity(local="e1"):
+    doc = ProvDocument()
+    doc.add_namespace(EX)
+    return doc.entity(EX[local])
+
+
+def _make_activity(local="a1"):
+    doc = ProvDocument()
+    doc.add_namespace(EX)
+    return doc.activity(EX[local])
+
+
+def _make_agent(local="ag1"):
+    doc = ProvDocument()
+    doc.add_namespace(EX)
+    return doc.agent(EX[local])
+
+
+def _make_usage_relation():
+    doc = ProvDocument()
+    doc.add_namespace(EX)
+    doc.activity(EX["a1"])
+    doc.entity(EX["e1"])
+    usage = doc.usage(EX["a1"], EX["e1"])
+    return usage
+
+
+def _make_wrapper_ext():
+    """Simple wrapper with two entities + derivation."""
+    doc = ProvDocument()
+    doc.add_namespace(EX)
+    b = doc.bundle(EX["bundle"])
+    b.entity(EX["e1"])
+    b.entity(EX["e2"])
+    b.activity(EX["a1"])
+    b.usage(EX["a1"], EX["e1"])
+    b.wasGeneratedBy(EX["e2"], EX["a1"])
+    b.wasDerivedFrom(EX["e2"], EX["e1"])
+    return ProvGraphWrapper(doc)
+
+
+# ─── DividedCpmFactory (extended) ───────────────────────────────────────────
+
+class TestDividedCpmFactoryExtended:
+    def test_create_node(self):
+        f = DividedCpmFactory()
+        e = _make_entity()
+        node = f.create_node([e])
+        assert isinstance(node, DividedGraphNode)
+
+    def test_create_node_empty_raises(self):
+        f = DividedCpmFactory()
+        with pytest.raises(ValueError):
+            f.create_node([])
+
+    def test_create_edge(self):
+        f = DividedCpmFactory()
+        e1 = _make_entity("e1")
+        e2 = _make_entity("e2")
+        n1 = f.create_node([e1])
+        n2 = f.create_node([e2])
+        rel = _make_usage_relation()
+        edge = f.create_edge([rel], n1, n2)
+        assert isinstance(edge, DividedGraphEdge)
+
+    def test_create_edge_empty_raises(self):
+        f = DividedCpmFactory()
+        n1 = f.create_node([_make_entity()])
+        with pytest.raises(ValueError):
+            f.create_edge([], n1, n1)
+
+    def test_clone_node_without_edges(self):
+        f = DividedCpmFactory()
+        node = f.create_node([_make_entity()])
+        cloned = f.clone_node(node)
+        assert isinstance(cloned, DividedGraphNode)
+        assert cloned is not node
+
+    def test_clone_node_with_edges(self):
+        f = DividedCpmFactory()
+        n1 = f.create_node([_make_entity("e1")])
+        n2 = f.create_node([_make_entity("e2")])
+        rel = _make_usage_relation()
+        edge = f.create_edge([rel], n1, n2)
+        n1.add_cause_edge(edge)
+        cloned = f.clone_node(n1, include_edges=True)
+        assert len(cloned.cause_edges) == 1
+
+    def test_clone_edge(self):
+        f = DividedCpmFactory()
+        n1 = f.create_node([_make_entity("e1")])
+        n2 = f.create_node([_make_entity("e2")])
+        rel = _make_usage_relation()
+        edge = f.create_edge([rel], n1, n2)
+        cloned = f.clone_edge(edge)
+        assert isinstance(cloned, DividedGraphEdge)
+        assert cloned.cause is n1
+
+    def test_clone_edge_with_mapping(self):
+        f = DividedCpmFactory()
+        n1 = f.create_node([_make_entity("e1")])
+        n2 = f.create_node([_make_entity("e2")])
+        n3 = f.create_node([_make_entity("e3")])
+        rel = _make_usage_relation()
+        edge = f.create_edge([rel], n1, n2)
+        cloned = f.clone_edge(edge, {n1: n3})
+        assert cloned.cause is n3
+
+    def test_get_factory_type(self):
+        assert DividedCpmFactory().get_factory_type() == "DIVIDED"
+
+
+# ─── MergedCpmFactory (extended) ────────────────────────────────────────────
+
+class TestMergedCpmFactoryExtended:
+    def test_create_node(self):
+        f = MergedCpmFactory()
+        node = f.create_node([_make_entity()])
+        assert isinstance(node, MergedGraphNode)
+
+    def test_create_node_empty_raises(self):
+        f = MergedCpmFactory()
+        with pytest.raises(ValueError):
+            f.create_node([])
+
+    def test_create_edge(self):
+        f = MergedCpmFactory()
+        n1 = f.create_node([_make_entity("e1")])
+        n2 = f.create_node([_make_entity("e2")])
+        rel = _make_usage_relation()
+        edge = f.create_edge([rel], n1, n2)
+        assert isinstance(edge, MergedGraphEdge)
+
+    def test_create_edge_empty_raises(self):
+        f = MergedCpmFactory()
+        n = f.create_node([_make_entity()])
+        with pytest.raises(ValueError):
+            f.create_edge([], n, n)
+
+    def test_clone_node(self):
+        f = MergedCpmFactory()
+        node = f.create_node([_make_entity()])
+        cloned = f.clone_node(node)
+        assert isinstance(cloned, MergedGraphNode)
+
+    def test_clone_node_with_edges(self):
+        f = MergedCpmFactory()
+        n1 = f.create_node([_make_entity("e1")])
+        n2 = f.create_node([_make_entity("e2")])
+        rel = _make_usage_relation()
+        edge = f.create_edge([rel], n1, n2)
+        n1.add_effect_edge(edge)
+        cloned = f.clone_node(n1, include_edges=True)
+        assert len(cloned.effect_edges) == 1
+
+    def test_clone_edge(self):
+        f = MergedCpmFactory()
+        n1 = f.create_node([_make_entity("e1")])
+        n2 = f.create_node([_make_entity("e2")])
+        rel = _make_usage_relation()
+        edge = f.create_edge([rel], n1, n2)
+        cloned = f.clone_edge(edge)
+        assert isinstance(cloned, MergedGraphEdge)
+
+    def test_get_factory_type(self):
+        assert MergedCpmFactory().get_factory_type() == "MERGED"
+
+
+# ─── CpmFactoryManager (extended) ──────────────────────────────────────────
+
+class TestCpmFactoryManagerExtended:
+    def test_get_factory_default(self):
+        m = CpmFactoryManager()
+        f = m.get_factory()
+        assert isinstance(f, DividedCpmFactory)
+
+    def test_get_factory_merged(self):
+        m = CpmFactoryManager()
+        f = m.get_factory("MERGED")
+        assert isinstance(f, MergedCpmFactory)
+
+    def test_get_factory_unknown_raises(self):
+        m = CpmFactoryManager()
+        with pytest.raises(ValueError):
+            m.get_factory("UNKNOWN")
+
+    def test_create_node_from_elements(self):
+        m = CpmFactoryManager()
+        node = m.create_node_from_elements([_make_entity()])
+        assert isinstance(node, DividedGraphNode)
+
+    def test_create_edge_from_relations(self):
+        m = CpmFactoryManager()
+        n1 = m.create_node_from_elements([_make_entity("e1")])
+        n2 = m.create_node_from_elements([_make_entity("e2")])
+        rel = _make_usage_relation()
+        edge = m.create_edge_from_relations([rel], n1, n2)
+        assert isinstance(edge, DividedGraphEdge)
+
+    def test_clone_graph(self):
+        m = CpmFactoryManager()
+        w = _make_wrapper_ext()
+        cloned = m.clone_graph(w)
+        assert isinstance(cloned, ProvGraphWrapper)
+        assert len(cloned.get_nodes()) > 0
+
+    def test_merge_graphs_empty(self):
+        m = CpmFactoryManager()
+        merged = m.merge_graphs([])
+        assert len(merged.get_nodes()) == 0
+
+    def test_merge_graphs_single(self):
+        m = CpmFactoryManager()
+        w = _make_wrapper_ext()
+        merged = m.merge_graphs([w])
+        assert len(merged.get_nodes()) > 0
+
+    def test_merge_graphs_two(self):
+        m = CpmFactoryManager()
+        w1 = _make_wrapper_ext()
+        w2 = _make_wrapper_ext()
+        merged = m.merge_graphs([w1, w2])
+        assert isinstance(merged, ProvGraphWrapper)
+
+    def test_create_subgraph(self):
+        m = CpmFactoryManager()
+        w = _make_wrapper_ext()
+        sub = m.create_subgraph(w, lambda node: "e1" in str(node.identifier))
+        assert isinstance(sub, ProvGraphWrapper)
+
+    def test_get_available_factory_types(self):
+        m = CpmFactoryManager()
+        types = m.get_available_factory_types()
+        assert "DIVIDED" in types
+        assert "MERGED" in types
+
+    def test_register_factory(self):
+        m = CpmFactoryManager()
+        m.register_factory("CUSTOM", DividedCpmFactory())
+        assert "CUSTOM" in m.get_available_factory_types()
+
+    def test_set_default_factory_type(self):
+        m = CpmFactoryManager()
+        m.set_default_factory_type("MERGED")
+        f = m.get_factory()
+        assert isinstance(f, MergedCpmFactory)
+
+    def test_set_default_unknown_raises(self):
+        m = CpmFactoryManager()
+        with pytest.raises(ValueError):
+            m.set_default_factory_type("NOPE")
+
+
+# ─── Module-level functions ─────────────────────────────────────────────────
+
+class TestModuleFunctions:
+    def test_get_factory_manager(self):
+        m = get_factory_manager()
+        assert isinstance(m, CpmFactoryManager)
+
+    def test_create_node_func(self):
+        node = create_node([_make_entity()])
+        assert isinstance(node, GraphNode)
+
+    def test_create_edge_func(self):
+        n1 = create_node([_make_entity("e1")])
+        n2 = create_node([_make_entity("e2")])
+        rel = _make_usage_relation()
+        edge = create_edge([rel], n1, n2)
+        assert isinstance(edge, GraphEdge)
+
+    def test_clone_graph_func(self):
+        w = _make_wrapper_ext()
+        cloned = clone_graph(w)
+        assert isinstance(cloned, ProvGraphWrapper)
+
+    def test_merge_graphs_func(self):
+        w = _make_wrapper_ext()
+        merged = merge_graphs([w])
+        assert isinstance(merged, ProvGraphWrapper)

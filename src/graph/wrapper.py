@@ -49,42 +49,35 @@ class ProvGraphWrapper:
         for record in bundle.get_records(ProvRelation):
             self.add_relation_as_edge(record)
 
-    def add_entity_as_node(self, entity: ProvEntity) -> GraphNode:
-        node_id = str(entity.identifier) if entity.identifier else f"entity_{len(self._nodes)}"
+    def _add_record_as_node(self, record, kind: str) -> GraphNode:
+        """
+        Add a PROV record (entity, agent, or activity) as a graph node.
+
+        Args:
+            record: A ProvEntity, ProvAgent, or ProvActivity instance.
+            kind: One of 'entity', 'agent', 'activity' — used for fallback ID
+                  and as the key in the NetworkX node data dict.
+        """
+        node_id = str(record.identifier) if record.identifier else f"{kind}_{len(self._nodes)}"
 
         if node_id in self._nodes:
             return self._nodes[node_id]
 
-        node = GraphNode(entity, node_id)
+        node = GraphNode(record, node_id)
         self._nodes[node_id] = node
-        self.graph.add_node(node_id, prov_entity=entity, graph_node=node)
+        self.graph.add_node(node_id, **{f"prov_{kind}": record, "graph_node": node})
 
         return node
+
+    def add_entity_as_node(self, entity: ProvEntity) -> GraphNode:
+        return self._add_record_as_node(entity, "entity")
 
     def add_agent_as_node(self, agent: ProvAgent) -> GraphNode:
-        node_id = str(agent.identifier) if agent.identifier else f"agent_{len(self._nodes)}"
-
-        if node_id in self._nodes:
-            return self._nodes[node_id]
-
-        node = GraphNode(agent, node_id)
-        self._nodes[node_id] = node
-        self.graph.add_node(node_id, prov_agent=agent, graph_node=node)
-
-        return node
+        return self._add_record_as_node(agent, "agent")
 
     def add_activity_as_node(self, activity: ProvActivity) -> GraphNode:
         """Add an activity as a node (vertex) in the graph - per PROV-DM spec."""
-        node_id = str(activity.identifier) if activity.identifier else f"activity_{len(self._nodes)}"
-
-        if node_id in self._nodes:
-            return self._nodes[node_id]
-
-        node = GraphNode(activity, node_id)
-        self._nodes[node_id] = node
-        self.graph.add_node(node_id, prov_activity=activity, graph_node=node)
-
-        return node
+        return self._add_record_as_node(activity, "activity")
 
     def add_relation_as_edge(self, relation: ProvRelation) -> Optional[GraphEdge]:
         """
