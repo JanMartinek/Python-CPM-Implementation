@@ -11,7 +11,7 @@ agent merging behavior, connector relations, identifier entities and relation cr
 import pytest
 from prov.model import ProvDocument, ProvAgent, ProvActivity, ProvEntity, ProvBundle
 from src.cpm.template import (
-    TraversalInformationTemplate,
+    CpmBundleTemplate,
     MainActivityTemplate,
     ConnectorTemplate,
     AgentTemplate,
@@ -71,7 +71,7 @@ def build_basic_template():
         id="ex:id1", external_id="ex:externalEntity", attributes={"category": "identifier"}
     )
 
-    return TraversalInformationTemplate(
+    return CpmBundleTemplate(
         prefixes=prefixes,
         bundle_name=bundle_name,
         main_activity=main_activity,

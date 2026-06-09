@@ -4,6 +4,7 @@ CPM Document - Core Operations Mixin
 Core CRUD operations for CPM documents.
 """
 
+import logging
 from typing import Dict, List, Optional, Any, Set, Union, Tuple
 from prov.model import ProvDocument, ProvBundle, ProvEntity, ProvActivity, ProvAgent, ProvRecord
 from prov.identifier import QualifiedName, Namespace
@@ -13,10 +14,23 @@ import copy
 from src.graph.node import GraphNode
 from src.graph.wrapper import ProvGraphWrapper
 from src.cpm.constants import *
-from src.cpm.template import TraversalInformationTemplate
+from src.cpm.namespaces import (
+    ATTRIBUTE_NAMESPACE_PREFIX,
+    ATTRIBUTE_NAMESPACE_URI,
+    DEFAULT_NAMESPACE_PREFIX,
+    DEFAULT_NAMESPACE_URI,
+    ensure_namespace,
+    get_document,
+    get_namespace_by_prefix,
+    get_namespace_uri,
+)
+from src.cpm.template import CpmBundleTemplate
 from src.cpm.template_mapper import TemplateProvMapper
 from src.cpm.ti_algorithm import TraversalInformationAlgorithm
 from src.cpm.exceptions import *
+
+
+LOGGER = logging.getLogger(__name__)
 
 
 class CpmDocumentCoreMixin:
@@ -47,7 +61,7 @@ class CpmDocumentCoreMixin:
                 # doc.bundles returns dict_values, so iterate to get first bundle
                 for bundle in doc.bundles:
                     return bundle
-            except Exception:
+            except (AttributeError, TypeError):
                 pass
 
         # Fallback: try accessing as dictionary values
@@ -55,7 +69,7 @@ class CpmDocumentCoreMixin:
             try:
                 for bundle in doc.bundles.values():
                     return bundle
-            except Exception:
+            except (AttributeError, TypeError):
                 pass
 
         # Alternative: check for bundle records directly
@@ -106,6 +120,15 @@ class CpmDocumentCoreMixin:
                 if self.ti_algorithm.belongs_to_traversal_information(node.prov_entity):
                     connectors.append(node)
         return connectors
+
+    def get_current_agents(self) -> List[GraphNode]:
+        """Get all current agent nodes"""
+        agents = []
+        for node in self.graph_wrapper.get_nodes():
+            if self._has_cpm_type(node, CPM_CURRENT_AGENT):
+                if self.ti_algorithm.belongs_to_traversal_information(node.prov_entity):
+                    agents.append(node)
+        return agents
 
     def get_node(self, identifier: Union[str, QualifiedName]) -> Optional[GraphNode]:
         """
@@ -196,7 +219,7 @@ class CpmDocumentCoreMixin:
                     ptype_local = ptype_str.split(':')[-1] if ':' in ptype_str else ptype_str
                     if ptype_local == cpm_local_name:
                         return True
-        except Exception:
+        except (AttributeError, TypeError, ValueError):
             pass
         return False
 
@@ -224,7 +247,7 @@ class CpmDocumentCoreMixin:
             elif type_local == 'agent' and isinstance(node.prov_entity, ProvAgent):
                 return True
 
-        except Exception:
+        except (AttributeError, TypeError, ValueError):
             pass
         return False
 
@@ -233,6 +256,112 @@ class CpmDocumentCoreMixin:
         if isinstance(identifier, str):
             return identifier
         return str(identifier)
+
+    def _resolve_qualified_name(
+        self,
+        identifier: Union[str, QualifiedName],
+        default_prefix: str = DEFAULT_NAMESPACE_PREFIX,
+        default_uri: str = DEFAULT_NAMESPACE_URI,
+    ) -> QualifiedName:
+        """Resolve a string identifier into a QualifiedName."""
+        if not isinstance(identifier, str):
+            return identifier
+
+        try:
+            qname = self._bundle.valid_qualified_name(identifier)
+        except (AttributeError, TypeError, ValueError):
+            qname = None
+
+        if qname is not None:
+            return qname
+
+        doc = get_document(self._bundle)
+        if ':' in identifier:
+            prefix, local_name = identifier.split(':', 1)
+            namespace = get_namespace_by_prefix(doc, prefix)
+            if namespace is None:
+                namespace = ensure_namespace(doc, prefix, get_namespace_uri(prefix))
+            return namespace[local_name]
+
+        namespace = ensure_namespace(doc, default_prefix, default_uri)
+        return namespace[identifier]
+
+    def _normalize_prov_type(self, prov_type: Union[str, QualifiedName]) -> Union[str, QualifiedName]:
+        """Normalize PROV type values without forcing plain strings into a synthetic namespace."""
+        if not isinstance(prov_type, str):
+            return prov_type
+
+        try:
+            qname = self._bundle.valid_qualified_name(prov_type)
+        except (AttributeError, TypeError, ValueError):
+            qname = None
+
+        if qname is not None:
+            return qname
+        if ':' in prov_type:
+            return self._resolve_qualified_name(prov_type)
+        return prov_type
+
+    def _build_node_attribute_list(
+        self,
+        attributes: Optional[Dict[str, Any]],
+        prov_type: Optional[Union[str, QualifiedName]] = None,
+    ) -> List[Tuple[Any, Any]]:
+        """Build normalized PROV attributes for a new node."""
+        attr_list: List[Tuple[Any, Any]] = []
+
+        if prov_type:
+            attr_list.append((PROV_TYPE, self._normalize_prov_type(prov_type)))
+
+        if not attributes:
+            return attr_list
+
+        for attr_name, attr_value in attributes.items():
+            try:
+                attr_qname = self._resolve_qualified_name(
+                    attr_name,
+                    default_prefix=ATTRIBUTE_NAMESPACE_PREFIX,
+                    default_uri=ATTRIBUTE_NAMESPACE_URI,
+                )
+            except (AttributeError, TypeError, ValueError) as exc:
+                LOGGER.warning("Skipping invalid attribute %r while creating node: %s", attr_name, exc)
+                continue
+            attr_list.append((attr_qname, attr_value))
+
+        return attr_list
+
+    def _create_prov_node(
+        self,
+        node_type: str,
+        qname: QualifiedName,
+        attr_list: List[Tuple[Any, Any]],
+    ) -> ProvRecord:
+        """Create a PROV record for the requested node type."""
+        creators = {
+            'entity': self._bundle.entity,
+            'activity': self._bundle.activity,
+            'agent': self._bundle.agent,
+        }
+        creator = creators.get(node_type.lower())
+        if creator is None:
+            raise InvalidOperationError(f"Invalid node type: {node_type}")
+
+        try:
+            return creator(qname, other_attributes=attr_list)
+        except (AttributeError, TypeError, ValueError) as exc:
+            raise CpmDocumentError(
+                f"Failed to create PROV {node_type} with identifier {qname}: {exc}"
+            ) from exc
+
+    def _add_prov_node_to_wrapper(self, prov_element: ProvRecord) -> GraphNode:
+        """Register a freshly created PROV record in the graph wrapper."""
+        if isinstance(prov_element, ProvEntity):
+            return self.graph_wrapper.add_entity_as_node(prov_element)
+        if isinstance(prov_element, ProvActivity):
+            return self.graph_wrapper.add_activity_as_node(prov_element)
+        if isinstance(prov_element, ProvAgent):
+            return self.graph_wrapper.add_agent_as_node(prov_element)
+        raise CpmDocumentError(f"Unknown PROV element type: {type(prov_element)}")
 
     def add_node(self, node_type: str, identifier: Union[str, QualifiedName],
                  attributes: Optional[Dict[str, Any]] = None,
@@ -254,47 +383,12 @@ class CpmDocumentCoreMixin:
         """
         self._mark_modified()
 
-        # Normalize identifier - use a more robust approach
-        if isinstance(identifier, str):
-            try:
-                qname = self._bundle.valid_qualified_name(identifier)
-                if qname is None:
-                    # Fallback: create QualifiedName manually using same logic as TemplateProvMapper
-                    doc = self._bundle._document if hasattr(self._bundle, '_document') else self._bundle.document
-
-                    if ':' in identifier:
-                        # Handle prefixed names like "test:entity1"
-                        prefix, local_name = identifier.split(':', 1)
-
-                        # Check if namespace exists
-                        namespace = None
-                        for ns in doc.namespaces:
-                            if ns.prefix == prefix:
-                                namespace = ns
-                                break
-
-                        if namespace:
-                            qname = namespace[local_name]
-                        else:
-                            # Create new namespace for this prefix
-                            namespace_uri = f"http://example.org/{prefix}/"
-                            ns = doc.add_namespace(prefix, namespace_uri)
-                            qname = ns[local_name]
-                    else:
-                        # Simple name without prefix - use default namespace
-                        default_ns = None
-                        for ns in doc.namespaces:
-                            if ns.prefix == 'default':
-                                default_ns = ns
-                                break
-
-                        if not default_ns:
-                            default_ns = doc.add_namespace('default', 'http://example.org/default/')
-                        qname = default_ns[identifier]
-            except Exception as e:
-                raise InvalidOperationError(f"Failed to create QualifiedName for identifier: {identifier} - {e}")
-        else:
-            qname = identifier
+        try:
+            qname = self._resolve_qualified_name(identifier)
+        except (AttributeError, TypeError, ValueError) as exc:
+            raise InvalidOperationError(
+                f"Failed to create QualifiedName for identifier: {identifier} - {exc}"
+            ) from exc
 
         if qname is None:
             raise InvalidOperationError(f"Invalid identifier: {identifier}")
@@ -304,108 +398,9 @@ class CpmDocumentCoreMixin:
         if existing_nodes:
             raise InvalidOperationError(f"Node with identifier {qname} already exists")
 
-        # Prepare attributes
-        attr_list = []
-        if prov_type:
-            if isinstance(prov_type, str):
-                try:
-                    prov_type_qname = self._bundle.valid_qualified_name(prov_type)
-                    if prov_type_qname is None:
-                        # Try to create prov_type QualifiedName manually if needed
-                        prov_type_qname = prov_type
-                    prov_type = prov_type_qname
-                except Exception:
-                    pass  # Use original string if QualifiedName creation fails
-            if prov_type:
-                attr_list.append((PROV_TYPE, prov_type))
-
-        if attributes:
-            for attr_name, attr_value in attributes.items():
-                try:
-                    attr_qname = self._bundle.valid_qualified_name(attr_name)
-                    if attr_qname:
-                        attr_list.append((attr_qname, attr_value))
-                    else:
-                        # Fallback: create a proper QualifiedName for the attribute
-                        doc = self._bundle._document if hasattr(self._bundle, '_document') else self._bundle.document
-
-                        # Check if it's already a qualified name
-                        if ':' in attr_name:
-                            # Handle prefixed names like "ex:label"
-                            prefix, local_name = attr_name.split(':', 1)
-
-                            # Check if namespace exists
-                            namespace = None
-                            for ns in doc.namespaces:
-                                if ns.prefix == prefix:
-                                    namespace = ns
-                                    break
-
-                            if namespace:
-                                attr_qname = namespace[local_name]
-                            else:
-                                # Create new namespace for this prefix
-                                namespace_uri = f"http://example.org/{prefix}/"
-                                ns = doc.add_namespace(prefix, namespace_uri)
-                                attr_qname = ns[local_name]
-                        else:
-                            # Simple name without prefix - add to a default attribute namespace
-                            attr_ns = None
-                            for ns in doc.namespaces:
-                                if ns.prefix == 'attr':
-                                    attr_ns = ns
-                                    break
-
-                            if not attr_ns:
-                                attr_ns = doc.add_namespace('attr', 'http://example.org/attr/')
-                            attr_qname = attr_ns[attr_name]
-
-                        attr_list.append((attr_qname, attr_value))
-                except Exception as e:
-                    # Last resort: skip invalid attributes
-                    print(f"Warning: Skipping invalid attribute '{attr_name}': {e}")
-                    continue
-
-        # Create the node based on type
-        try:
-            prov_element = None
-            if node_type.lower() == 'entity':
-                prov_element = self._bundle.entity(qname, other_attributes=attr_list)
-            elif node_type.lower() == 'activity':
-                prov_element = self._bundle.activity(qname, other_attributes=attr_list)
-            elif node_type.lower() == 'agent':
-                prov_element = self._bundle.agent(qname, other_attributes=attr_list)
-            else:
-                raise InvalidOperationError(f"Invalid node type: {node_type}")
-        except Exception as e:
-            raise CpmDocumentError(f"Failed to create PROV {node_type} with identifier {qname}: {e}")
-
-        # Add the created element to the graph wrapper directly instead of recreating it
-        try:
-            if isinstance(prov_element, ProvEntity):
-                created_node = self.graph_wrapper.add_entity_as_node(prov_element)
-            elif isinstance(prov_element, ProvActivity):
-                node_id = str(qname)
-                created_node = GraphNode(prov_element, node_id)
-                self.graph_wrapper._nodes[node_id] = created_node
-                self.graph_wrapper.graph.add_node(node_id, prov_entity=prov_element, graph_node=created_node)
-            elif isinstance(prov_element, ProvAgent):
-                node_id = str(qname)
-                created_node = GraphNode(prov_element, node_id)
-                self.graph_wrapper._nodes[node_id] = created_node
-                self.graph_wrapper.graph.add_node(node_id, prov_entity=prov_element, graph_node=created_node)
-            else:
-                raise CpmDocumentError(f"Unknown PROV element type: {type(prov_element)}")
-
-        except Exception as e:
-            raise CpmDocumentError(f"Failed to add {node_type} to graph wrapper: {e}")
-
-        # Find and return the created node
-        created_nodes = self.get_nodes(qname)
-        if created_nodes:
-            return created_nodes[0]
-        else:
-            raise CpmDocumentError("Failed to create node")
+        attr_list = self._build_node_attribute_list(attributes, prov_type)
+        prov_element = self._create_prov_node(node_type, qname, attr_list)
+        return self._add_prov_node_to_wrapper(prov_element)
 
     def remove_node(self, identifier: Union[str, QualifiedName],
                     node_type: Optional[str] = None) -> bool:
@@ -808,7 +803,7 @@ class CpmDocumentCoreMixin:
                         matching_nodes.append(node)
                     elif attribute_value in attr_values:
                         matching_nodes.append(node)
-            except Exception:
+            except (AttributeError, TypeError, ValueError):
                 continue
 
         return matching_nodes
@@ -957,9 +952,8 @@ class CpmDocumentCoreMixin:
             if source and target:
                 return source, target
 
-        except Exception as e:
-            # Debug print for troubleshooting
-            print(f"Error extracting endpoints from {type(edge)}: {e}")
+        except (AttributeError, IndexError, TypeError, ValueError) as exc:
+            LOGGER.debug("Failed to extract endpoints from %s: %s", type(edge).__name__, exc)
 
         return None, None
 
@@ -1090,7 +1084,7 @@ class CpmDocumentCoreMixin:
             # Add more relation types as needed
 
             return True
-        except Exception:
+        except (AttributeError, TypeError, ValueError, InvalidOperationError, CpmDocumentError, NodeNotFoundError):
             return False
 
     def set_collection_members(self, old_collection_id: Union[str, QualifiedName],
@@ -1170,7 +1164,7 @@ class CpmDocumentCoreMixin:
             # Recreate graph wrapper to reflect changes
             self.graph_wrapper = ProvGraphWrapper(self.graph_wrapper.to_prov_document())
             return True
-        except Exception:
+        except (AttributeError, TypeError, ValueError):
             return False
 
     def get_nodes_map(self) -> Dict[str, List[GraphNode]]:
@@ -1231,7 +1225,7 @@ class CpmDocumentCoreMixin:
         try:
             bundle = self._get_bundle()
             return str(bundle.identifier) if bundle.identifier else None
-        except Exception:
+        except (AttributeError, TypeError, ValueError):
             return None
 
     def set_bundle_id(self, bundle_id: Union[str, QualifiedName]) -> bool:
@@ -1244,13 +1238,10 @@ class CpmDocumentCoreMixin:
         Returns:
             True if successful
         """
-        try:
-            self._mark_modified()
-            # Store the custom bundle ID for persistence across document reconstructions
-            self._custom_bundle_id = bundle_id
-            return True
-        except Exception:
-            return False
+        self._mark_modified()
+        # Store the custom bundle ID for persistence across document reconstructions
+        self._custom_bundle_id = bundle_id
+        return True
 
     def get_edge_with_kind(self, edge_id: Union[str, QualifiedName],
                            kind: Optional[str] = None) -> Optional[Any]:
@@ -1300,7 +1291,7 @@ class CpmDocumentCoreMixin:
             # Add new edge with updated endpoints
             try:
                 self.add_edge(kind, new_cause_id, new_effect_id)
-            except Exception:
+            except (AttributeError, TypeError, ValueError, InvalidOperationError, CpmDocumentError, NodeNotFoundError):
                 return False
 
         # Recreate graph wrapper
@@ -1450,7 +1441,7 @@ class CpmDocumentCoreMixin:
 
             self.graph_wrapper = ProvGraphWrapper(self.graph_wrapper.to_prov_document())
             return True
-        except Exception:
+        except (AttributeError, TypeError, ValueError, InvalidOperationError, CpmDocumentError):
             return False
 
     def _update_relations_for_renamed_element(self, old_id: Union[str, QualifiedName],

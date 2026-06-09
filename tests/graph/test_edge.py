@@ -704,6 +704,29 @@ class TestGraphEdgeBasics:
         edge = GraphEdge(rel, c, e)
         edge.handle_duplicate(rel)  # same identifier → no-op
 
+    def test_handle_duplicate_merges_attributes(self):
+        doc = ProvDocument()
+        doc.add_namespace('ex', 'http://example.org/')
+        activity = doc.activity('ex:activity1')
+        entity = doc.entity('ex:entity1')
+        relation = doc.usage(activity, entity, identifier='ex:usage1', other_attributes={'ex:attr1': 'value1'})
+
+        duplicate_doc = ProvDocument()
+        duplicate_doc.add_namespace('ex', 'http://example.org/')
+        duplicate_activity = duplicate_doc.activity('ex:activity1')
+        duplicate_entity = duplicate_doc.entity('ex:entity1')
+        duplicate_relation = duplicate_doc.usage(
+            duplicate_activity,
+            duplicate_entity,
+            identifier='ex:usage1',
+            other_attributes={'ex:attr2': 'value2'},
+        )
+
+        edge = GraphEdge(relation, GraphNode(activity), GraphNode(entity))
+        edge.handle_duplicate(duplicate_relation)
+
+        assert 'value2' in edge.get_attribute_values('ex:attr2')
+
     def test_clone(self):
         c, e, rel = _make_nodes_and_relation()
         edge = GraphEdge(rel, c, e)

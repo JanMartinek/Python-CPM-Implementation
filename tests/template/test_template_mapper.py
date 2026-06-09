@@ -10,7 +10,7 @@ from prov.model import ProvDocument
 
 from src.cpm.template_mapper import TemplateProvMapper
 from src.cpm.template import (
-    TraversalInformationTemplate,
+    CpmBundleTemplate,
     MainActivityTemplate,
     ConnectorTemplate,
     AgentTemplate,
@@ -20,7 +20,7 @@ from src.cpm.template import (
 
 
 def _minimal_template():
-    return TraversalInformationTemplate(
+    return CpmBundleTemplate(
         bundle_name="test:bundle",
         prefixes={},
         main_activity=MainActivityTemplate(
@@ -37,7 +37,7 @@ def _minimal_template():
 
 
 def _full_template():
-    return TraversalInformationTemplate(
+    return CpmBundleTemplate(
         bundle_name="test:bundle",
         prefixes={"ex": "http://example.org/"},
         main_activity=MainActivityTemplate(

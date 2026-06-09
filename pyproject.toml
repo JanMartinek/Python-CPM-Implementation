@@ -1,14 +1,14 @@
 [project]
 name = "cpm-python"
 version = "1.0.0"
-description = "Chain Provenance Model (CPM) - Python Implementation based on W3C PROV-DM"
+description = "Common Provenance Model (CPM) - Python implementation based on W3C PROV-DM"
 authors = [
     {name = "CPM Implementation Team"}
 ]
 license = {text = "MIT"}
 readme = "README.md"
 requires-python = ">=3.8"
-keywords = ["provenance", "cpm", "prov-dm", "w3c", "chain-provenance-model"]
+keywords = ["provenance", "cpm", "prov-dm", "w3c", "common-provenance-model"]
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
@@ -28,12 +28,15 @@ dependencies = [
     "prov>=2.0.0",
     "networkx>=2.5",
     "python-dateutil>=2.8.0",
+    "rdflib>=6.0.0",
 ]
 
 [project.optional-dependencies]
 dev = [
     "pytest>=8.0.0",
     "pytest-cov>=4.0.0",
+    "jsonschema>=4.0.0",
+    "lxml>=4.6.0",
 ]
 visualization = [
     "matplotlib>=3.3.0",
@@ -53,10 +56,10 @@ all = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/your-repo/python-implementation-of-the-cpm"
-Documentation = "https://github.com/your-repo/python-implementation-of-the-cpm"
-Repository = "https://github.com/your-repo/python-implementation-of-the-cpm"
-Issues = "https://github.com/your-repo/python-implementation-of-the-cpm/issues"
+Homepage = "https://github.com/JanMartinek/Python-CPM-Implementation"
+Documentation = "https://github.com/JanMartinek/Python-CPM-Implementation/tree/main/docs"
+Repository = "https://github.com/JanMartinek/Python-CPM-Implementation"
+Issues = "https://github.com/JanMartinek/Python-CPM-Implementation/issues"
 
 [build-system]
 requires = ["setuptools>=61.0", "wheel"]

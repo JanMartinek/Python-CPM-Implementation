@@ -6,6 +6,7 @@ import pytest
 from prov.model import ProvDocument, ProvEntity, ProvActivity, ProvAgent
 from prov.identifier import Namespace
 from prov.constants import PROV_TYPE
+from src.cpm.constants import CPM_MAIN_ACTIVITY
 from src.cpm.model import CpmDocument
 from src.cpm.builder import CpmDocumentBuilder
 from src.cpm.exceptions import (
@@ -101,6 +102,31 @@ class TestAddNode:
         doc = _build_doc()
         node = doc.add_node('entity', 'test:new_entity', {'description': 'new'})
         assert node is not None
+
+    def test_add_node_on_empty_document_with_namespace(self):
+        prov_doc = ProvDocument()
+        prov_doc.add_namespace('ex', 'http://example.org/')
+
+        doc = CpmDocument(prov_doc)
+        node = doc.add_node(
+            'activity',
+            'ex:process',
+            {'prov:label': 'Main Processing Activity'},
+            prov_type='cpm:MainActivity',
+        )
+
+        round_tripped_doc = doc.graph_wrapper.to_prov_document()
+
+        assert node is not None
+        assert str(node.identifier) == 'ex:process'
+        assert any(
+            str(value) == str(CPM_MAIN_ACTIVITY)
+            for value in node.get_prov_attribute(str(PROV_TYPE))
+        )
+        assert any(
+            ns.prefix == 'ex' and str(ns.uri) == 'http://example.org/'
+            for ns in round_tripped_doc.namespaces
+        )
 
     def test_add_activity(self):
         doc = _build_doc()

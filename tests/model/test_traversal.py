@@ -284,3 +284,33 @@ class TestTraversalPrecursorsSuccessorsExtra:
         doc = _build_connector_chain()
         result = doc.get_successors_connectors("test:nope")
         assert result is None
+
+
+# ─── Subgraph ────────────────────────────────────────────────────────────────
+
+class TestSubgraph:
+    def test_subgraph_with_known_nodes(self):
+        doc = _build_doc()
+        sub = doc.get_subgraph(['test:e1', 'test:e2'])
+        assert isinstance(sub, CpmDocument)
+        assert len(sub.get_all_nodes()) <= 2
+
+    def test_subgraph_empty_ids(self):
+        doc = _build_doc()
+        sub = doc.get_subgraph([])
+        assert len(sub.get_all_nodes()) == 0
+
+    def test_subgraph_nonexistent_ids(self):
+        doc = _build_doc()
+        sub = doc.get_subgraph(['test:nonexistent'])
+        assert len(sub.get_all_nodes()) == 0
+
+    def test_subgraph_without_edges(self):
+        doc = _build_doc()
+        sub = doc.get_subgraph(['test:e1', 'test:e2'], include_edges=False)
+        assert isinstance(sub, CpmDocument)
+
+    def test_subgraph_with_edges(self):
+        doc = _build_doc()
+        sub = doc.get_subgraph(['test:e1', 'test:main'], include_edges=True)
+        assert isinstance(sub, CpmDocument)

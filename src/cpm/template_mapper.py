@@ -1,7 +1,7 @@
 """
 Template to PROV Mapping
 
-Maps CPM TraversalInformationTemplate objects to PROV documents.
+Maps CPM CpmBundleTemplate objects to PROV documents.
 """
 
 from typing import Dict
@@ -9,11 +9,22 @@ from prov.model import ProvDocument, ProvBundle, ProvEntity, ProvActivity, ProvA
 from prov.constants import PROV_TYPE, PROV_VALUE
 
 from .constants import *
-from .template import TraversalInformationTemplate
+from .namespaces import (
+    BUNDLE_NAMESPACE_PREFIX,
+    BUNDLE_NAMESPACE_URI,
+    DEFAULT_CPM_NAMESPACES,
+    DEFAULT_NAMESPACE_PREFIX,
+    DEFAULT_NAMESPACE_URI,
+    build_example_namespace_uri,
+    ensure_namespace,
+    get_document,
+    get_namespace_by_prefix,
+)
+from .template import CpmBundleTemplate
 
 
 class TemplateProvMapper:
-    """Maps TraversalInformationTemplate objects to PROV documents"""
+    """Maps CpmBundleTemplate objects to PROV documents"""
 
     def __init__(self, merge_agents: bool = True):
         """
@@ -24,9 +35,9 @@ class TemplateProvMapper:
         """
         self.merge_agents = merge_agents
 
-    def map_to_document(self, template: TraversalInformationTemplate) -> ProvDocument:
+    def map_to_document(self, template: CpmBundleTemplate) -> ProvDocument:
         """
-        Map a TraversalInformationTemplate to a ProvDocument.
+        Map a CpmBundleTemplate to a ProvDocument.
 
         Args:
             template: The template to map
@@ -55,49 +66,27 @@ class TemplateProvMapper:
             prefix, local_name = bundle_name.split(':', 1)
             if prefix in namespaces:
                 # Use existing namespace - find it in doc.namespaces
-                namespace = None
-                for ns in doc.namespaces:
-                    if ns.prefix == prefix:
-                        namespace = ns
-                        break
+                namespace = get_namespace_by_prefix(doc, prefix)
                 bundle_id = namespace[local_name] if namespace else None
             else:
                 # Create new namespace for this prefix
-                namespace_uri = f"http://example.org/{prefix}/"
-                ns = doc.add_namespace(prefix, namespace_uri)
+                ns = ensure_namespace(doc, prefix, build_example_namespace_uri(prefix))
                 bundle_id = ns[local_name]
         else:
             # Simple name without prefix - use default namespace
-            if 'default' not in namespaces:
-                doc.add_namespace('default', 'http://example.org/default/')
-            # Find default namespace in doc.namespaces
-            default_ns = None
-            for ns in doc.namespaces:
-                if ns.prefix == 'default':
-                    default_ns = ns
-                    break
-            bundle_id = default_ns[bundle_name] if default_ns else None
+            default_ns = ensure_namespace(doc, DEFAULT_NAMESPACE_PREFIX, DEFAULT_NAMESPACE_URI)
+            bundle_id = default_ns[bundle_name]
 
         # Fallback: create with cpm namespace
         if bundle_id is None:
             # Find cmp namespace in doc.namespaces
-            cpm_ns = None
-            for ns in doc.namespaces:
-                if ns.prefix == 'cpm':
-                    cpm_ns = ns
-                    break
+            cpm_ns = get_namespace_by_prefix(doc, 'cpm')
             if cpm_ns:
                 bundle_id = cpm_ns['bundle']
             else:
                 # Last resort: create simple default namespace
-                doc.add_namespace('bundle_ns', 'http://example.org/bundle/')
-                # Find the newly created namespace
-                bundle_ns = None
-                for ns in doc.namespaces:
-                    if ns.prefix == 'bundle_ns':
-                        bundle_ns = ns
-                        break
-                bundle_id = bundle_ns['main'] if bundle_ns else None
+                bundle_ns = ensure_namespace(doc, BUNDLE_NAMESPACE_PREFIX, BUNDLE_NAMESPACE_URI)
+                bundle_id = bundle_ns['main']
 
         # Create the bundle with proper QualifiedName
         bundle = doc.bundle(bundle_id)
@@ -133,6 +122,15 @@ class TemplateProvMapper:
                 existing_agent.add_asserted_type(CPM_RECEIVER_AGENT)
             else:
                 agent = self._map_receiver_agent(bundle, agent_template)
+                all_agents[agent_template.id] = agent
+
+        for agent_template in template.current_agents:
+            if self.merge_agents and agent_template.id in all_agents:
+                # Merge with existing agent
+                existing_agent = all_agents[agent_template.id]
+                existing_agent.add_asserted_type(CPM_CURRENT_AGENT)
+            else:
+                agent = self._map_current_agent(bundle, agent_template)
                 all_agents[agent_template.id] = agent
 
         agents.update(all_agents)
@@ -296,6 +294,24 @@ class TemplateProvMapper:
 
         return bundle.agent(agent_id, other_attributes=attributes)
 
+    def _map_current_agent(self, bundle: ProvBundle, template) -> ProvAgent:
+        """Map current agent template to ProvAgent"""
+        agent_id = self._create_qualified_name(bundle, template.id)
+
+        attributes = [(PROV_TYPE, CPM_CURRENT_AGENT)]
+
+        # Add contact ID PID
+        if template.contact_id_pid:
+            attributes.append((CPM_CONTACT_ID_PID, template.contact_id_pid))
+
+        # Add custom attributes
+        for attr_name, attr_value in template.attributes.items():
+            attr_qname = self._create_qualified_name(bundle, attr_name)
+            if attr_qname:
+                attributes.append((attr_qname, attr_value))
+
+        return bundle.agent(agent_id, other_attributes=attributes)
+
     def _map_identifier_entity(self, bundle: ProvBundle, template) -> ProvEntity:
         """Map identifier entity template to ProvEntity"""
         entity_id = self._create_qualified_name(bundle, template.id)
@@ -334,14 +350,14 @@ class TemplateProvMapper:
             raise ValueError("Identifier cannot be empty")
 
         # Get the document from the bundle
-        doc = bundle._document if hasattr(bundle, '_document') else bundle.document
+        doc = get_document(bundle)
 
         # Try bundle.valid_qualified_name first
         try:
             qname = bundle.valid_qualified_name(identifier)
             if qname is not None:
                 return qname
-        except Exception:
+        except (AttributeError, TypeError, ValueError):
             pass
 
         # If that fails, handle manually using correct PROV API
@@ -350,32 +366,20 @@ class TemplateProvMapper:
             prefix, local_name = identifier.split(':', 1)
 
             # Check if namespace exists using correct PROV API
-            namespace = None
-            for ns in doc.namespaces:
-                if ns.prefix == prefix:
-                    namespace = ns
-                    break
+            namespace = get_namespace_by_prefix(doc, prefix)
 
             if namespace:
                 return namespace[local_name]
             else:
                 # Create new namespace for this prefix
-                namespace_uri = f"http://example.org/{prefix}/"
-                ns = doc.add_namespace(prefix, namespace_uri)
+                ns = ensure_namespace(doc, prefix, build_example_namespace_uri(prefix))
                 return ns[local_name]
         else:
             # Simple name without prefix - use default namespace
-            default_ns = None
-            for ns in doc.namespaces:
-                if ns.prefix == 'default':
-                    default_ns = ns
-                    break
-
-            if not default_ns:
-                default_ns = doc.add_namespace('default', 'http://example.org/default/')
+            default_ns = ensure_namespace(doc, DEFAULT_NAMESPACE_PREFIX, DEFAULT_NAMESPACE_URI)
             return default_ns[identifier]
 
-    def _create_relations(self, bundle: ProvBundle, template: TraversalInformationTemplate,
+    def _create_relations(self, bundle: ProvBundle, template: CpmBundleTemplate,
                           entities: Dict[str, ProvEntity], activities: Dict[str, ProvActivity],
                           agents: Dict[str, ProvAgent]):
         """Create all relations between elements"""

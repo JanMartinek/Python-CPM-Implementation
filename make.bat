@@ -62,6 +62,7 @@ python -m pytest tests/template/test_template.py -v
 goto end
 
 :examples
+set PYTHONPATH=.;%PYTHONPATH%
 echo Running basic examples...
 python examples/basic_examples.py
 echo.
@@ -69,8 +70,22 @@ echo Running advanced examples...
 python examples/advanced_examples.py
 echo.
 echo Running template examples...
-set PYTHONPATH=.;%PYTHONPATH%
 python examples/template_examples.py
+echo.
+echo Running advanced template examples...
+python examples/template_advanced_examples.py
+echo.
+echo Running CpmDocument examples...
+python examples/cpmdocument_examples.py
+echo.
+echo Running BBMRI biobank use case...
+python examples/usecases/usecase_bbmri_biobank.py
+echo.
+echo Running MOU XML use case...
+python examples/usecases/usecase_mou_xml.py
+echo.
+echo Running EMBRC JSON-LD use case...
+python examples/usecases/usecase_embrc_jsonld.py
 goto end
 
 :clean

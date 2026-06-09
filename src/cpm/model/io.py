@@ -13,7 +13,7 @@ import copy
 from src.graph.node import GraphNode
 from src.graph.wrapper import ProvGraphWrapper
 from src.cpm.constants import *
-from src.cpm.template import TraversalInformationTemplate
+from src.cpm.template import CpmBundleTemplate
 from src.cpm.template_mapper import TemplateProvMapper
 from src.cpm.ti_algorithm import TraversalInformationAlgorithm
 from src.cpm.exceptions import *
@@ -38,7 +38,7 @@ class CpmDocumentIOMixin:
     """
 
     @classmethod
-    def from_template(cls, template: TraversalInformationTemplate,
+    def from_template(cls, template: CpmBundleTemplate,
                       domain_specific_doc: Optional[ProvDocument] = None) -> 'CpmDocument':
         """
         Create CPM document from template and optional domain-specific provenance.
@@ -142,7 +142,7 @@ class CpmDocumentIOMixin:
                     if end_time and end_attr:
                         if end_attr[0] > end_time:
                             include_node = False
-            except Exception:
+            except (AttributeError, IndexError, TypeError, ValueError):
                 pass
 
             if include_node:
@@ -160,66 +160,10 @@ class CpmDocumentIOMixin:
 
                 try:
                     filtered_doc.add_node(node_type, node.identifier, attributes, prov_type)
-                except Exception:
+                except (AttributeError, TypeError, ValueError, InvalidOperationError, CpmDocumentError):
                     pass  # Skip if unable to add
 
         return filtered_doc
-
-    def get_subgraph(self, node_ids: List[Union[str, QualifiedName]],
-                     include_edges: bool = True) -> 'CpmDocument':
-        """
-        Extract a subgraph containing only specified nodes and optionally their edges.
-
-        Args:
-            node_ids: List of node identifiers to include
-            include_edges: Whether to include edges between the nodes
-
-        Returns:
-            A new CpmDocument containing the subgraph
-        """
-        subgraph_doc = self.__class__(ProvDocument())
-        added_nodes = {}
-
-        # Add specified nodes
-        for node_id in node_ids:
-            node = self.get_node(node_id)
-            if node:
-                node_type = node.node_type_name
-
-                # Extract attributes
-                attributes = {}
-                for attr_name, attr_value in node.prov_entity.attributes:
-                    if attr_name != PROV_TYPE:
-                        attributes[str(attr_name)] = attr_value
-
-                prov_types = node.get_prov_attribute(str(PROV_TYPE))
-                prov_type = prov_types[0] if prov_types else None
-
-                try:
-                    added_node = subgraph_doc.add_node(node_type, node.identifier, attributes, prov_type)
-                    added_nodes[str(node.identifier)] = added_node
-                except Exception:
-                    pass
-
-        # Add edges between included nodes
-        if include_edges:
-            for source_id in node_ids:
-                for target_id in node_ids:
-                    if source_id != target_id:
-                        edges = self.get_edges(source_id, target_id)
-                        for edge in edges:
-                            try:
-                                # Determine edge type and add to subgraph
-                                edge_type = type(edge).__name__.lower()
-                                if 'usage' in edge_type:
-                                    subgraph_doc.add_edge('used', source_id, target_id)
-                                elif 'generation' in edge_type:
-                                    subgraph_doc.add_edge('wasgeneratedby', source_id, target_id)
-                                # Add other edge types as needed
-                            except Exception:
-                                pass
-
-        return subgraph_doc
 
     def export_to_formats(self) -> Dict[str, str]:
         """
@@ -234,19 +178,19 @@ class CpmDocumentIOMixin:
         try:
             # PROV-N format
             exports['provn'] = prov_doc.get_provn()
-        except Exception:
+        except (AttributeError, TypeError, ValueError, NotImplementedError):
             exports['provn'] = "Error: Could not export to PROV-N"
 
         try:
             # JSON format
             exports['json'] = prov_doc.serialize(format='json')
-        except Exception:
+        except (AttributeError, TypeError, ValueError, NotImplementedError):
             exports['json'] = "Error: Could not export to JSON"
 
         try:
             # XML format
             exports['xml'] = prov_doc.serialize(format='xml')
-        except Exception:
+        except (AttributeError, TypeError, ValueError, NotImplementedError):
             exports['xml'] = "Error: Could not export to XML"
 
         return exports
@@ -280,7 +224,7 @@ class CpmDocumentIOMixin:
                 elif isinstance(record, ProvAgent):
                     self.add_node('agent', record.identifier,
                                   {str(k): v for k, v in record.attributes if k != PROV_TYPE})
-            except Exception:
+            except (AttributeError, TypeError, ValueError, InvalidOperationError, CpmDocumentError):
                 pass  # Skip records that cannot be added (e.g. duplicates)
 
         # Also import records from bundles inside other_doc (only ProvDocument has bundles)
@@ -328,7 +272,7 @@ class CpmDocumentIOMixin:
             if str(node.identifier) in other_ids:
                 try:
                     self.remove_node(node.identifier)
-                except Exception:
+                except (AttributeError, TypeError, ValueError, InvalidOperationError, CpmDocumentError):
                     pass
 
         self._add_records_from(other_doc, skip_existing=False)

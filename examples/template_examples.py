@@ -14,8 +14,6 @@ This file demonstrates the CPM template system and validation functionality, inc
 This covers the CPM template system for structured provenance workflows.
 """
 
-from prov.model import ProvDocument
-from src.graph.wrapper import ProvGraphWrapper
 import sys
 import os
 import json
@@ -24,11 +22,14 @@ from typing import Dict, Any, List, Optional
 # Add src to path for imports
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
+from prov.model import ProvDocument
+from src.graph.wrapper import ProvGraphWrapper
+
 try:
     from src.cpm.template import (
-        TraversalInformationTemplate,
-        TraversalInformationDeserializer,
-        TraversalInformationSerializer
+        CpmBundleTemplate,
+        CpmBundleDeserializer,
+        CpmBundleSerializer
     )
     from src.cpm.model import CpmDocument, TemplateProvMapper
     from src.cpm.constants import CPM_MAIN_ACTIVITY, CPM_FORWARD_CONNECTOR, CPM_BACKWARD_CONNECTOR
@@ -165,7 +166,7 @@ def demonstrate_template_processing(template_data: Dict[str, Any]):
 
     try:
         # Deserialize template
-        template = TraversalInformationDeserializer.from_json(template_data)
+        template = CpmBundleDeserializer.from_json(template_data)
         print(f"✓ Deserialized template: {template.bundle_name}")
 
         # Convert to CPM document
@@ -193,13 +194,13 @@ def demonstrate_template_serialization(template_data: Dict[str, Any]):
 
     try:
         # Round-trip serialization test
-        template = TraversalInformationDeserializer.from_json(template_data)
+        template = CpmBundleDeserializer.from_json(template_data)
 
-        serialized_json = TraversalInformationSerializer.to_json(template)
+        serialized_json = CpmBundleSerializer.to_json(template)
         print(f"✓ Serialized template to JSON ({len(serialized_json)} characters)")
 
         # Verify round-trip
-        deserialized_again = TraversalInformationDeserializer.from_json(serialized_json)
+        deserialized_again = CpmBundleDeserializer.from_json(serialized_json)
         print(f"✓ Round-trip serialization successful")
 
         # Save to file for inspection
@@ -222,7 +223,7 @@ def demonstrate_template_validation(template_data: Dict[str, Any]):
 
     try:
         # Create template and convert to graph for validation
-        template = TraversalInformationDeserializer.from_json(template_data)
+        template = CpmBundleDeserializer.from_json(template_data)
 
         cpm_doc = CpmDocument.from_template(template)
         graph = cpm_doc.to_graph_wrapper()
@@ -389,7 +390,7 @@ def demonstrate_error_handling():
 
     if CPM_AVAILABLE:
         try:
-            template = TraversalInformationDeserializer.from_json(invalid_template)
+            template = CpmBundleDeserializer.from_json(invalid_template)
             print("✗ Invalid template was unexpectedly accepted")
         except Exception as e:
             print(f"✓ Invalid template correctly rejected: {type(e).__name__}")
@@ -399,7 +400,7 @@ def demonstrate_error_handling():
 
     if CPM_AVAILABLE:
         try:
-            template = TraversalInformationDeserializer.from_json(malformed_json)
+            template = CpmBundleDeserializer.from_json(malformed_json)
             print("✗ Malformed JSON was unexpectedly accepted")
         except Exception as e:
             print(f"✓ Malformed JSON correctly rejected: {type(e).__name__}")

@@ -1,4 +1,4 @@
-.PHONY: help install install-dev test test-verbose test-coverage clean lint format examples all
+.PHONY: help install install-dev test test-verbose test-coverage test-specific clean lint format examples all
 
 help:
 	@echo "CPM Python Implementation - Makefile"
@@ -43,6 +43,21 @@ examples:
 	@echo ""
 	@echo "Running template examples..."
 	python examples/template_examples.py
+	@echo ""
+	@echo "Running advanced template examples..."
+	python examples/template_advanced_examples.py
+	@echo ""
+	@echo "Running CpmDocument examples..."
+	python examples/cpmdocument_examples.py
+	@echo ""
+	@echo "Running BBMRI biobank use case..."
+	python examples/usecases/usecase_bbmri_biobank.py
+	@echo ""
+	@echo "Running MOU XML use case..."
+	python examples/usecases/usecase_mou_xml.py
+	@echo ""
+	@echo "Running EMBRC JSON-LD use case..."
+	python examples/usecases/usecase_embrc_jsonld.py
 
 clean:
 	rm -rf __pycache__ .pytest_cache .coverage htmlcov

@@ -218,7 +218,7 @@ class IdentifierEntityTemplate:
 
 
 @dataclass
-class TraversalInformationTemplate:
+class CpmBundleTemplate:
     """Complete template for CPM traversal information"""
     prefixes: Dict[str, str]
     bundle_name: str
@@ -227,14 +227,15 @@ class TraversalInformationTemplate:
     forward_connectors: List[ConnectorTemplate] = field(default_factory=list)
     sender_agents: List[AgentTemplate] = field(default_factory=list)
     receiver_agents: List[AgentTemplate] = field(default_factory=list)
+    current_agents: List[AgentTemplate] = field(default_factory=list)
     identifier_entities: List[IdentifierEntityTemplate] = field(default_factory=list)
 
 
-class TraversalInformationDeserializer:
-    """Deserializes JSON data into TraversalInformationTemplate objects"""
+class CpmBundleDeserializer:
+    """Deserializes JSON data into CpmBundleTemplate objects"""
 
     @staticmethod
-    def from_json(json_data: Union[str, Dict[str, Any]]) -> TraversalInformationTemplate:
+    def from_json(json_data: Union[str, Dict[str, Any]]) -> CpmBundleTemplate:
         if isinstance(json_data, str):
             data = json.loads(json_data)
         else:
@@ -255,12 +256,15 @@ class TraversalInformationDeserializer:
         receiver_agents = [
             AgentTemplate.from_dict(agent) for agent in data.get("receiverAgents", [])
         ]
+        current_agents = [
+            AgentTemplate.from_dict(agent) for agent in data.get("currentAgents", [])
+        ]
 
         identifier_entities = [
             IdentifierEntityTemplate.from_dict(entity) for entity in data.get("identifierEntities", [])
         ]
 
-        return TraversalInformationTemplate(
+        return CpmBundleTemplate(
             prefixes=data.get("prefixes", {}),
             bundle_name=data["bundleName"],
             main_activity=main_activity,
@@ -268,20 +272,21 @@ class TraversalInformationDeserializer:
             forward_connectors=forward_connectors,
             sender_agents=sender_agents,
             receiver_agents=receiver_agents,
+            current_agents=current_agents,
             identifier_entities=identifier_entities
         )
 
     @staticmethod
-    def from_file(file_path: Union[str, Path]) -> TraversalInformationTemplate:
+    def from_file(file_path: Union[str, Path]) -> CpmBundleTemplate:
         with open(file_path, 'r', encoding='utf-8') as f:
-            return TraversalInformationDeserializer.from_json(f.read())
+            return CpmBundleDeserializer.from_json(f.read())
 
 
-class TraversalInformationSerializer:
-    """Serializes TraversalInformationTemplate objects to JSON"""
+class CpmBundleSerializer:
+    """Serializes CpmBundleTemplate objects to JSON"""
 
     @staticmethod
-    def to_dict(template: TraversalInformationTemplate) -> Dict[str, Any]:
+    def to_dict(template: CpmBundleTemplate) -> Dict[str, Any]:
         result = {
             "prefixes": template.prefixes,
             "bundleName": template.bundle_name,
@@ -300,19 +305,22 @@ class TraversalInformationSerializer:
         if template.receiver_agents:
             result["receiverAgents"] = [agent.to_dict() for agent in template.receiver_agents]
 
+        if template.current_agents:
+            result["currentAgents"] = [agent.to_dict() for agent in template.current_agents]
+
         if template.identifier_entities:
             result["identifierEntities"] = [entity.to_dict() for entity in template.identifier_entities]
 
         return result
 
     @staticmethod
-    def to_json(template: TraversalInformationTemplate, indent: Optional[int] = None) -> str:
-        data = TraversalInformationSerializer.to_dict(template)
+    def to_json(template: CpmBundleTemplate, indent: Optional[int] = None) -> str:
+        data = CpmBundleSerializer.to_dict(template)
         return json.dumps(data, indent=indent, ensure_ascii=False)
 
     @staticmethod
-    def to_file(template: TraversalInformationTemplate, file_path: Union[str, Path], indent: Optional[int] = 2):
-        json_content = TraversalInformationSerializer.to_json(template, indent)
+    def to_file(template: CpmBundleTemplate, file_path: Union[str, Path], indent: Optional[int] = 2):
+        json_content = CpmBundleSerializer.to_json(template, indent)
         with open(file_path, 'w', encoding='utf-8') as f:
             f.write(json_content)
 
@@ -374,12 +382,10 @@ class TemplateSchemaValidator:
 
         return True
 
-    def validate_template_object(self, template: TraversalInformationTemplate) -> bool:
-        """Validate TraversalInformationTemplate object"""
-        template_dict = TraversalInformationSerializer.to_dict(template)
+    def validate_template_object(self, template: CpmBundleTemplate) -> bool:
+        """Validate CpmBundleTemplate object"""
+        template_dict = CpmBundleSerializer.to_dict(template)
         return self.validate_template(template_dict)
-
-        return True
 
 
 class AdvancedTemplateProcessor:
@@ -388,9 +394,9 @@ class AdvancedTemplateProcessor:
     def __init__(self, validator: Optional[TemplateSchemaValidator] = None):
         self.validator = validator or TemplateSchemaValidator()
 
-    def process_template_with_validation(self, template_data: Dict[str, Any]) -> TraversalInformationTemplate:
+    def process_template_with_validation(self, template_data: Dict[str, Any]) -> CpmBundleTemplate:
         self.validator.validate_template(template_data)
-        return TraversalInformationDeserializer.from_json(template_data)
+        return CpmBundleDeserializer.from_json(template_data)
 
     def transform_embrc_template(self, embrc_data: Dict[str, Any]) -> Dict[str, Any]:
         transformed = {
@@ -405,23 +411,53 @@ class AdvancedTemplateProcessor:
             graph_data = embrc_data["@graph"]
             activities = [node for node in graph_data if self._is_activity(node)]
             entities = [node for node in graph_data if self._is_entity(node)]
-
-            if activities:
-                main_activity = activities[0]
-                transformed["mainActivity"].update({
-                    "id": main_activity.get("@id", "embrc:mainActivity"),
-                    "startTime": main_activity.get("prov:startedAtTime"),
-                    "endTime": main_activity.get("prov:endedAtTime")
-                })
+            entities_by_id = {
+                entity.get("@id"): entity
+                for entity in entities
+                if isinstance(entity, dict) and entity.get("@id")
+            }
 
             backward_connectors = []
             forward_connectors = []
 
-            for entity in entities:
-                if self._is_backward_connector(entity):
-                    backward_connectors.append(self._transform_connector(entity))
-                elif self._is_forward_connector(entity):
-                    forward_connectors.append(self._transform_connector(entity))
+            if activities:
+                main_activity = activities[0]
+                backward_connectors, forward_connectors = self._extract_activity_connectors(
+                    main_activity,
+                    entities_by_id,
+                )
+                sender_agents, receiver_agents = self._extract_activity_agents(main_activity)
+
+                transformed["mainActivity"].update({
+                    "id": main_activity.get("@id", "embrc:mainActivity"),
+                    "startTime": main_activity.get("prov:startedAtTime") or main_activity.get("startTime"),
+                    "endTime": main_activity.get("prov:endedAtTime") or main_activity.get("endTime")
+                })
+
+                if backward_connectors:
+                    transformed["mainActivity"]["used"] = [
+                        {"targetId": connector["id"]}
+                        for connector in backward_connectors
+                    ]
+
+                if forward_connectors:
+                    transformed["mainActivity"]["generated"] = [
+                        connector["id"]
+                        for connector in forward_connectors
+                    ]
+
+                if sender_agents:
+                    transformed["senderAgents"] = [{"id": agent_id} for agent_id in sender_agents]
+
+                if receiver_agents:
+                    transformed["receiverAgents"] = [{"id": agent_id} for agent_id in receiver_agents]
+
+            if not backward_connectors and not forward_connectors:
+                for entity in entities:
+                    if self._is_backward_connector(entity):
+                        backward_connectors.append(self._transform_connector(entity))
+                    elif self._is_forward_connector(entity):
+                        forward_connectors.append(self._transform_connector(entity))
 
             if backward_connectors:
                 transformed["backwardConnectors"] = backward_connectors
@@ -431,18 +467,101 @@ class AdvancedTemplateProcessor:
         return transformed
 
     def _is_activity(self, node: Dict[str, Any]) -> bool:
-        node_type = node.get("@type", "")
-        return isinstance(node_type, str) and "Activity" in node_type
+        return any("Activity" in node_type for node_type in self._get_type_values(node))
 
     def _is_entity(self, node: Dict[str, Any]) -> bool:
-        node_type = node.get("@type", "")
-        return isinstance(node_type, str) and "Entity" in node_type
+        return any("Entity" in node_type for node_type in self._get_type_values(node))
 
     def _is_backward_connector(self, entity: Dict[str, Any]) -> bool:
         return "prov:wasUsedBy" in entity or "used" in entity
 
     def _is_forward_connector(self, entity: Dict[str, Any]) -> bool:
         return "prov:wasGeneratedBy" in entity or "generated" in entity
+
+    def _get_type_values(self, node: Dict[str, Any]) -> List[str]:
+        node_type = node.get("@type", [])
+
+        if isinstance(node_type, str):
+            return [node_type]
+        if isinstance(node_type, list):
+            return [value for value in node_type if isinstance(value, str)]
+        return []
+
+    def _ensure_list(self, value: Any) -> List[Any]:
+        if value is None:
+            return []
+        if isinstance(value, list):
+            return value
+        return [value]
+
+    def _extract_ref_ids(self, value: Any) -> List[str]:
+        ref_ids = []
+
+        for item in self._ensure_list(value):
+            if isinstance(item, str):
+                ref_ids.append(item)
+            elif isinstance(item, dict):
+                ref_id = item.get("@id") or item.get("id")
+                if ref_id:
+                    ref_ids.append(ref_id)
+
+        return ref_ids
+
+    def _build_connectors_from_refs(self,
+                                    ref_ids: List[str],
+                                    entities_by_id: Dict[str, Dict[str, Any]]) -> List[Dict[str, Any]]:
+        connectors = []
+        seen_ids = set()
+
+        for ref_id in ref_ids:
+            if not ref_id or ref_id in seen_ids:
+                continue
+
+            seen_ids.add(ref_id)
+            entity = entities_by_id.get(ref_id)
+            connectors.append(self._transform_connector(entity) if entity else {"id": ref_id})
+
+        return connectors
+
+    def _extract_activity_connectors(self,
+                                     activity: Dict[str, Any],
+                                     entities_by_id: Dict[str, Dict[str, Any]]) -> tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
+        used_refs = self._extract_ref_ids(activity.get("prov:used"))
+        used_refs.extend(self._extract_ref_ids(activity.get("used")))
+        used_refs.extend(self._extract_ref_ids(activity.get("object")))
+
+        generated_refs = self._extract_ref_ids(activity.get("prov:generated"))
+        generated_refs.extend(self._extract_ref_ids(activity.get("generated")))
+        generated_refs.extend(self._extract_ref_ids(activity.get("result")))
+
+        backward_connectors = self._build_connectors_from_refs(used_refs, entities_by_id)
+        forward_connectors = self._build_connectors_from_refs(generated_refs, entities_by_id)
+        return backward_connectors, forward_connectors
+
+    def _extract_activity_agents(self, activity: Dict[str, Any]) -> tuple[List[str], List[str]]:
+        sender_ids = []
+        receiver_ids = []
+
+        for association in self._ensure_list(activity.get("prov:qualifiedAssociation")):
+            if not isinstance(association, dict):
+                continue
+
+            role = str(association.get("dcat:hadRole", "")).lower()
+            agent_ids = self._extract_ref_ids(association.get("prov:agent"))
+
+            for agent_id in agent_ids:
+                if "receiv" in role:
+                    if agent_id not in receiver_ids:
+                        receiver_ids.append(agent_id)
+                else:
+                    if agent_id not in sender_ids:
+                        sender_ids.append(agent_id)
+
+        for agent_id in self._extract_ref_ids(activity.get("prov:wasAssociatedWith")):
+            if agent_id not in sender_ids and agent_id not in receiver_ids:
+                sender_ids.append(agent_id)
+
+        return sender_ids, receiver_ids
 
     def _transform_connector(self, entity: Dict[str, Any]) -> Dict[str, Any]:
         connector = {
@@ -463,7 +582,7 @@ class AdvancedTemplateProcessor:
         return hashlib.md5(str(datetime.now()).encode()).hexdigest()[:8]
 
 
-class EnhancedTraversalInformationSerializer(TraversalInformationSerializer):
+class EnhancedCpmBundleSerializer(CpmBundleSerializer):
     """Enhanced serializer with advanced features"""
 
     def __init__(self, pretty_print: bool = True, validate_output: bool = False):
@@ -472,7 +591,7 @@ class EnhancedTraversalInformationSerializer(TraversalInformationSerializer):
         self.validate_output = validate_output
         self.validator = TemplateSchemaValidator() if validate_output else None
 
-    def to_json_with_validation(self, template: TraversalInformationTemplate, indent: Optional[int] = 2) -> str:
+    def to_json_with_validation(self, template: CpmBundleTemplate, indent: Optional[int] = 2) -> str:
         data = self.to_dict(template)
 
         if self.validate_output and self.validator:
@@ -480,7 +599,7 @@ class EnhancedTraversalInformationSerializer(TraversalInformationSerializer):
 
         return json.dumps(data, indent=indent if self.pretty_print else None, ensure_ascii=False)
 
-    def to_file_with_validation(self, template: TraversalInformationTemplate, file_path: Union[str, Path]) -> None:
+    def to_file_with_validation(self, template: CpmBundleTemplate, file_path: Union[str, Path]) -> None:
         json_content = self.to_json_with_validation(template)
 
         with open(file_path, 'w', encoding='utf-8') as f:
@@ -510,7 +629,7 @@ class TemplateAgentAnalyzer:
     def __init__(self, merge_agents: bool = True):
         self.merge_agents = merge_agents
 
-    def analyze_agent_overlap(self, template: TraversalInformationTemplate) -> Dict[str, Any]:
+    def analyze_agent_overlap(self, template: CpmBundleTemplate) -> Dict[str, Any]:
         sender_ids = {agent.id for agent in template.sender_agents}
         receiver_ids = {agent.id for agent in template.receiver_agents}
         overlapping_ids = sender_ids.intersection(receiver_ids)
@@ -543,12 +662,12 @@ class TemplateTransformationPipeline:
 
     def __init__(self):
         self.processor = AdvancedTemplateProcessor()
-        self.serializer = EnhancedTraversalInformationSerializer()
+        self.serializer = EnhancedCpmBundleSerializer()
         self.analyzer = TemplateAgentAnalyzer()
 
     def transform_and_validate(self,
                                input_data: Dict[str, Any],
-                               source_format: str = "standard") -> TraversalInformationTemplate:
+                               source_format: str = "standard") -> CpmBundleTemplate:
         if source_format == "embrc":
             transformed_data = self.processor.transform_embrc_template(input_data)
         elif source_format == "mou":
@@ -558,7 +677,7 @@ class TemplateTransformationPipeline:
 
         return self.processor.process_template_with_validation(transformed_data)
 
-    def analyze_template_quality(self, template: TraversalInformationTemplate) -> Dict[str, Any]:
+    def analyze_template_quality(self, template: CpmBundleTemplate) -> Dict[str, Any]:
         stats = {
             'prefixes': len(template.prefixes),
             'backward_connectors': len(template.backward_connectors),
@@ -615,3 +734,10 @@ class TemplateTransformationPipeline:
             'source_format': source_format,
             'processing_successful': True
         }
+
+
+# Backward compatibility aliases
+TraversalInformationTemplate = CpmBundleTemplate
+TraversalInformationSerializer = CpmBundleSerializer
+TraversalInformationDeserializer = CpmBundleDeserializer
+EnhancedTraversalInformationSerializer = EnhancedCpmBundleSerializer

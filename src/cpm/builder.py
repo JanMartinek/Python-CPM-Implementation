@@ -28,6 +28,7 @@ class CpmDocumentBuilder:
         self.backward_connectors = []
         self.sender_agents = []
         self.receiver_agents = []
+        self.current_agents = []
         self.identifier_entities = []
         self.relations = []
         self.prefixes = {}
@@ -149,6 +150,23 @@ class CpmDocumentBuilder:
         self.receiver_agents.append(agent)
         return self
 
+    def with_current_agent(self, agent_id: str, **attributes) -> 'CpmDocumentBuilder':
+        """
+        Add current agent to the document.
+
+        Args:
+            agent_id: Identifier for the agent
+            **attributes: Additional attributes for the agent
+
+        Returns:
+            Self for method chaining
+        """
+        from .template import AgentTemplate
+
+        agent = AgentTemplate(id=agent_id, attributes=attributes)
+        self.current_agents.append(agent)
+        return self
+
     def with_prefix(self, prefix: str, uri: str) -> 'CpmDocumentBuilder':
         """
         Add namespace prefix.
@@ -227,15 +245,16 @@ class CpmDocumentBuilder:
         if not self.main_activity:
             raise InvalidOperationError("Main activity is required")
 
-        from .template import TraversalInformationTemplate
+        from .template import CpmBundleTemplate
 
-        template = TraversalInformationTemplate(
+        template = CpmBundleTemplate(
             bundle_name=self.bundle_name,
             main_activity=self.main_activity,
             backward_connectors=self.backward_connectors,
             forward_connectors=self.forward_connectors,
             sender_agents=self.sender_agents,
             receiver_agents=self.receiver_agents,
+            current_agents=self.current_agents,
             identifier_entities=self.identifier_entities,
             prefixes=self.prefixes
         )

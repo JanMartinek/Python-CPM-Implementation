@@ -8,7 +8,7 @@ functionality for the CpmDocument class methods.
 from src.cpm.model import CpmDocument
 from src.cpm.builder import CpmDocumentBuilder
 from src.cpm.validation import CpmValidator
-from src.cpm.template import TraversalInformationTemplate, MainActivityTemplate, ConnectorTemplate, AgentTemplate
+from src.cpm.template import CpmBundleTemplate, MainActivityTemplate, ConnectorTemplate, AgentTemplate
 from prov.model import ProvDocument
 import traceback
 import sys

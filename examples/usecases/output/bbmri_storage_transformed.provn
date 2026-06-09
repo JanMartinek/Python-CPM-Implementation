@@ -1,7 +1,7 @@
 document
-  prefix bbmri <http://www.bbmri.cz/schemas/biobank/data#>
-  prefix cpm <https://www.commonprovenancemodel.org/cpm-namespace-v1-0/>
   prefix dct <http://purl.org/dc/terms/>
+  prefix cpm <https://www.commonprovenancemodel.org/cpm-namespace-v1-0/>
+  prefix bbmri <http://www.bbmri.cz/schemas/biobank/data#>
   prefix pbm <http://commonprovenancemodel.org/ns/pbm/>
   
   bundle bbmri:storageBundle-33-BBM-2032-136043

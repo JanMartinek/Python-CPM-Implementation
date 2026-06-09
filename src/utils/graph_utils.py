@@ -546,7 +546,7 @@ class PriorityBasedScheduler:
                 if start_time:
                     # Use timestamp for priority (reversed so earlier = higher)
                     priority += 1000.0 / (1.0 + hash(str(start_time)) % 1000)
-            except Exception:
+            except (AttributeError, TypeError, ValueError):
                 pass
 
         # Dependency priority (nodes with more dependencies get higher priority)

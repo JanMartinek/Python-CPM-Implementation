@@ -1,18 +1,18 @@
 """
 CPM Constants and Namespace Definitions
 
-Based on the Common Provenance Model specification as described in the 
+Based on the Common Provenance Model specification as described in the
 Reference Implementation thesis by Bc. Dávid Laurovič.
 """
 
-from prov.identifier import Namespace, QualifiedName
+from prov.identifier import Namespace
+
+from .namespaces import CPM_NAMESPACE_URI, DCT_NAMESPACE_URI, DEFAULT_CPM_NAMESPACES
 
 # CPM Namespace
-CPM_NAMESPACE_URI = "https://commonprovenancemodel.org/ns/cpm/"
 CPM = Namespace("cpm", CPM_NAMESPACE_URI)
 
 # DCT (Dublin Core Terms) Namespace - used for dct:hasPart
-DCT_NAMESPACE_URI = "http://purl.org/dc/terms/"
 DCT = Namespace("dct", DCT_NAMESPACE_URI)
 
 # CPM Subtypes (prov:type values)
@@ -21,6 +21,7 @@ CPM_BACKWARD_CONNECTOR = CPM["BackwardConnector"]
 CPM_FORWARD_CONNECTOR = CPM["ForwardConnector"]
 CPM_SENDER_AGENT = CPM["SenderAgent"]
 CPM_RECEIVER_AGENT = CPM["ReceiverAgent"]
+CPM_CURRENT_AGENT = CPM["CurrentAgent"]
 CPM_IDENTIFIER_ENTITY = CPM["IdentifierEntity"]
 CPM_SUB_ACTIVITY = CPM["SubActivity"]
 CPM_STORAGE_ACTIVITY = CPM["StorageActivity"]
@@ -39,14 +40,6 @@ CPM_COMMENT = CPM["comment"]
 # DCT Attributes
 DCT_HAS_PART = DCT["hasPart"]
 
-# Default CPM namespaces
-DEFAULT_CPM_NAMESPACES = {
-    "cpm": CPM_NAMESPACE_URI,
-    "dct": DCT_NAMESPACE_URI,
-    "prov": "http://www.w3.org/ns/prov#",
-    "xsd": "http://www.w3.org/2001/XMLSchema#"
-}
-
 # CPM Traversal Information attributes (allowed in TI part)
 CPM_TI_ALLOWED_ATTRIBUTES = {
     CPM_REFERENCED_BUNDLE_ID,
@@ -63,5 +56,5 @@ CPM_SUBTYPES = {
     CPM_FORWARD_CONNECTOR,
     CPM_SENDER_AGENT,
     CPM_RECEIVER_AGENT,
-    CPM_IDENTIFIER_ENTITY
+    CPM_CURRENT_AGENT
 }

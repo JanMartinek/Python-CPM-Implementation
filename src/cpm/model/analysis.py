@@ -13,7 +13,8 @@ import copy
 from src.graph.node import GraphNode
 from src.graph.wrapper import ProvGraphWrapper
 from src.cpm.constants import *
-from src.cpm.template import TraversalInformationTemplate
+from src.cpm import validation_messages as msg
+from src.cpm.template import CpmBundleTemplate
 from src.cpm.template_mapper import TemplateProvMapper
 from src.cpm.ti_algorithm import TraversalInformationAlgorithm
 from src.cpm.exceptions import *
@@ -135,9 +136,10 @@ class CpmDocumentAnalysisMixin:
                            if self._has_cpm_type(n, CPM_MAIN_ACTIVITY)]
 
         if not main_activities:
-            issues['warnings'].append("No main activity found in traversal information")
+            issues['warnings'].append(msg.no_main_activity().message)
         elif len(main_activities) > 1:
-            issues['warnings'].append(f"Multiple main activities found: {len(main_activities)}")
+            ids = ', '.join(str(n.identifier) for n in main_activities)
+            issues['warnings'].append(msg.multiple_main_activities(ids).message)
 
         # Check connector consistency
         forward_connectors = self.get_forward_connectors()
@@ -149,9 +151,25 @@ class CpmDocumentAnalysisMixin:
             hash_attrs = connector.get_prov_attribute('cpm:referencedBundleHashValue')
 
             if not bundle_id_attrs:
-                issues['errors'].append(f"Connector {connector.identifier} missing referencedBundleId")
+                issues['errors'].append(
+                    msg.connector_missing_bundle_id(connector.identifier).message)
             if not hash_attrs:
-                issues['warnings'].append(f"Connector {connector.identifier} missing hash value")
+                issues['warnings'].append(
+                    msg.connector_missing_hash(connector.identifier).message)
+
+        # Check connector relationships with Main Activity (CPM spec requirement)
+        if main_activities:
+            ma = main_activities[0]
+            for bc in backward_connectors:
+                usage_edges = self.get_edges(source_id=bc.identifier, target_id=ma.identifier, relation_type='used')
+                if not usage_edges:
+                    issues['errors'].append(
+                        msg.backward_connector_not_used(bc.identifier).message)
+            for fc in forward_connectors:
+                generation_edges = self.get_edges(source_id=ma.identifier, target_id=fc.identifier, relation_type='wasGeneratedBy')
+                if not generation_edges:
+                    issues['errors'].append(
+                        msg.forward_connector_not_generated(fc.identifier).message)
 
         # Check for orphaned nodes (nodes with no edges)
         all_nodes = self.graph_wrapper.get_nodes()
@@ -160,7 +178,7 @@ class CpmDocumentAnalysisMixin:
             outgoing_edges = self.get_edges(source_id=node.identifier)
 
             if not incoming_edges and not outgoing_edges:
-                issues['info'].append(f"Orphaned node found: {node.identifier}")
+                issues['info'].append(msg.orphaned_node(node.identifier).message)
 
         return issues
 
@@ -324,33 +342,51 @@ class CpmDocumentAnalysisMixin:
                            if self._has_cpm_type(n, CPM_MAIN_ACTIVITY)]
 
         if len(main_activities) == 0:
-            issues['critical_errors'].append("No main activity found - required for CPM compliance")
+            issues['critical_errors'].append(msg.no_main_activity().message)
         elif len(main_activities) > 1:
-            issues['warnings'].append(f"Multiple main activities found: {len(main_activities)}")
+            ids = ', '.join(str(n.identifier) for n in main_activities)
+            issues['warnings'].append(msg.multiple_main_activities(ids).message)
 
         # Check connector integrity
-        for connector in self.get_forward_connectors() + self.get_backward_connectors():
+        forward_connectors = self.get_forward_connectors()
+        backward_connectors = self.get_backward_connectors()
+
+        for connector in forward_connectors + backward_connectors:
             # Validate required CPM attributes
             bundle_id_attrs = connector.get_prov_attribute('cpm:referencedBundleId')
             if not bundle_id_attrs:
                 issues['critical_errors'].append(
-                    f"Connector {connector.identifier} missing required referencedBundleId")
+                    msg.connector_missing_bundle_id(connector.identifier).message)
 
             # Check hash value presence
             hash_attrs = connector.get_prov_attribute('cpm:referencedBundleHashValue')
             if not hash_attrs:
                 issues['recommendations'].append(
-                    f"Connector {connector.identifier} should have hash value for integrity")
+                    msg.connector_missing_hash(connector.identifier).message)
+
+        # Check connector relationships with Main Activity (CPM spec requirement)
+        if main_activities:
+            ma = main_activities[0]
+            for bc in backward_connectors:
+                usage_edges = self.get_edges(source_id=bc.identifier, target_id=ma.identifier, relation_type='used')
+                if not usage_edges:
+                    issues['critical_errors'].append(
+                        msg.backward_connector_not_used(bc.identifier).message)
+            for fc in forward_connectors:
+                generation_edges = self.get_edges(source_id=ma.identifier, target_id=fc.identifier, relation_type='wasGeneratedBy')
+                if not generation_edges:
+                    issues['critical_errors'].append(
+                        msg.forward_connector_not_generated(fc.identifier).message)
 
         # Check traversal information completeness
         ti_nodes = self.get_traversal_information_nodes()
         ds_nodes = self.get_domain_specific_nodes()
 
         if len(ti_nodes) == 0:
-            issues['critical_errors'].append("No traversal information nodes found")
+            issues['critical_errors'].append(msg.no_ti_nodes().message)
 
         if len(ds_nodes) == 0:
-            issues['recommendations'].append("No domain-specific nodes found - consider adding domain context")
+            issues['recommendations'].append(msg.no_ds_nodes().message)
 
         return issues
 

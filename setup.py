@@ -1,20 +1,29 @@
 from setuptools import setup, find_packages
 
+
+def _parse_requirements(file_path):
+    requirements = []
+    with open(file_path, 'r', encoding='utf-8') as f:
+        for line in f:
+            requirement = line.split('#', 1)[0].strip()
+            if requirement:
+                requirements.append(requirement)
+    return requirements
+
 with open('README.md', 'r', encoding='utf-8') as f:
     long_description = f.read()
 
-with open('requirements.txt', 'r', encoding='utf-8') as f:
-    requirements = [line.strip() for line in f if line.strip() and not line.startswith('#')]
+requirements = _parse_requirements('requirements.txt')
 
 setup(
     name='cpm-python',
     version='1.0.0',
     author='CPM Implementation Team',
     author_email='',
-    description='Chain Provenance Model (CPM) - Python Implementation based on W3C PROV-DM',
+    description='Common Provenance Model (CPM) - Python implementation based on W3C PROV-DM',
     long_description=long_description,
     long_description_content_type='text/markdown',
-    url='https://github.com/your-repo/python-implementation-of-the-cpm',
+    url='https://github.com/JanMartinek/Python-CPM-Implementation',
     packages=find_packages(where='src'),
     package_dir={'': 'src'},
     install_requires=requirements,
@@ -22,6 +31,8 @@ setup(
         'dev': [
             'pytest>=8.0.0',
             'pytest-cov>=4.0.0',
+            'jsonschema>=4.0.0',
+            'lxml>=4.6.0',
         ],
     },
     classifiers=[
@@ -39,10 +50,10 @@ setup(
         'Operating System :: OS Independent',
     ],
     python_requires='>=3.8',
-    keywords='provenance cpm prov-dm w3c chain-provenance-model',
+    keywords='provenance cpm prov-dm w3c common-provenance-model',
     project_urls={
-        'Documentation': 'https://github.com/your-repo/python-implementation-of-the-cpm',
-        'Source': 'https://github.com/your-repo/python-implementation-of-the-cpm',
-        'Bug Reports': 'https://github.com/your-repo/python-implementation-of-the-cpm/issues',
+        'Documentation': 'https://github.com/JanMartinek/Python-CPM-Implementation/tree/main/docs',
+        'Source': 'https://github.com/JanMartinek/Python-CPM-Implementation',
+        'Bug Reports': 'https://github.com/JanMartinek/Python-CPM-Implementation/issues',
     },
 )

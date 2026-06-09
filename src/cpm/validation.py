@@ -5,62 +5,20 @@ Advanced validation system including cross-part edge detection,
 traversal information strategy, and comprehensive graph validation.
 """
 
-from .template import TraversalInformationTemplate
+from .template import CpmBundleTemplate
+from . import validation_messages as msg
+from .validation_messages import (          # re-export for backward compat
+    ValidationLevel,
+    ValidationType,
+    ValidationResult,
+    ValidationReport,
+)
 from src.graph.edge import GraphEdge
 from src.graph.node import GraphNode
 from src.graph.wrapper import ProvGraphWrapper
 from typing import List, Dict, Set, Optional, Any, Tuple, Union
-from dataclasses import dataclass
-from enum import Enum
 from prov.model import ProvDocument, ProvBundle, ProvRecord, ProvRelation
 from prov.identifier import QualifiedName
-
-
-class ValidationLevel(Enum):
-    """Validation severity levels"""
-    ERROR = "ERROR"
-    WARNING = "WARNING"
-    INFO = "INFO"
-
-
-class ValidationType(Enum):
-    """Types of validation checks"""
-    STRUCTURAL = "STRUCTURAL"
-    SEMANTIC = "SEMANTIC"
-    TEMPLATE_COMPLIANCE = "TEMPLATE_COMPLIANCE"
-    CROSS_PART = "CROSS_PART"
-    TRAVERSAL = "TRAVERSAL"
-
-
-@dataclass
-class ValidationResult:
-    """Individual validation result"""
-    level: ValidationLevel
-    validation_type: ValidationType
-    message: str
-    node_id: Optional[QualifiedName] = None
-    edge_id: Optional[QualifiedName] = None
-    bundle_id: Optional[QualifiedName] = None
-    details: Optional[Dict[str, Any]] = None
-
-
-@dataclass
-class ValidationReport:
-    """Complete validation report"""
-    results: List[ValidationResult]
-    is_valid: bool
-    error_count: int
-    warning_count: int
-    info_count: int
-
-    def get_errors(self) -> List[ValidationResult]:
-        return [r for r in self.results if r.level == ValidationLevel.ERROR]
-
-    def get_warnings(self) -> List[ValidationResult]:
-        return [r for r in self.results if r.level == ValidationLevel.WARNING]
-
-    def get_by_type(self, validation_type: ValidationType) -> List[ValidationResult]:
-        return [r for r in self.results if r.validation_type == validation_type]
 
 
 class TraversalInformationStrategy:
@@ -124,7 +82,7 @@ class TraversalInformationStrategy:
                                 for record in bundle.records:
                                     if hasattr(record, 'identifier') and record.identifier:
                                         part_mapping[record.identifier] = bundle_id
-                except Exception:
+                except (AttributeError, TypeError):
                     pass  # Skip if bundle structure is not as expected
 
         return part_mapping
@@ -201,12 +159,11 @@ class CpmValidator:
             self._validate_cross_part_consistency,
             self._validate_traversal_properties,
             self._validate_bundle_structure,
-            self._validate_identifier_uniqueness,
             self._validate_attribute_consistency
         ])
 
     def validate(self, wrapper: ProvGraphWrapper,
-                 template: Optional[TraversalInformationTemplate] = None) -> ValidationReport:
+                 template: Optional[CpmBundleTemplate] = None) -> ValidationReport:
         """
         Perform comprehensive validation of a CPM graph.
 
@@ -227,13 +184,8 @@ class CpmValidator:
                     results.extend(rule_results)
                 elif rule_results:
                     results.append(rule_results)
-            except Exception as e:
-                results.append(ValidationResult(
-                    level=ValidationLevel.ERROR,
-                    validation_type=ValidationType.STRUCTURAL,
-                    message=f"Validation rule failed: {str(e)}",
-                    details={'exception': str(e), 'rule': rule.__name__}
-                ))
+            except (AttributeError, LookupError, RuntimeError, TypeError, ValueError) as e:
+                results.append(msg.validation_rule_failed(e, rule.__name__))
 
         # Template compliance validation
         if template:
@@ -254,79 +206,44 @@ class CpmValidator:
         )
 
     def _validate_node_integrity(self, wrapper: ProvGraphWrapper,
-                                 template: Optional[TraversalInformationTemplate] = None) -> List[ValidationResult]:
+                                 template: Optional[CpmBundleTemplate] = None) -> List[ValidationResult]:
         results = []
 
         for node in wrapper.get_nodes():
             if not node.identifier:
-                results.append(ValidationResult(
-                    level=ValidationLevel.ERROR,
-                    validation_type=ValidationType.STRUCTURAL,
-                    message="Node missing identifier",
-                    node_id=node.identifier
-                ))
+                results.append(msg.node_missing_identifier(node.identifier))
 
             elements = node.elements
             if not elements:
-                results.append(ValidationResult(
-                    level=ValidationLevel.ERROR,
-                    validation_type=ValidationType.STRUCTURAL,
-                    message="Node has no elements",
-                    node_id=node.identifier
-                ))
+                results.append(msg.node_no_elements(node.identifier))
 
             if node.is_isolated():
-                results.append(ValidationResult(
-                    level=ValidationLevel.WARNING,
-                    validation_type=ValidationType.STRUCTURAL,
-                    message="Isolated node detected",
-                    node_id=node.identifier
-                ))
+                results.append(msg.isolated_node(node.identifier))
 
         return results
 
     def _validate_edge_integrity(self, wrapper: ProvGraphWrapper,
-                                 template: Optional[TraversalInformationTemplate] = None) -> List[ValidationResult]:
+                                 template: Optional[CpmBundleTemplate] = None) -> List[ValidationResult]:
         results = []
 
         for edge in wrapper.get_edges():
             if not edge.cause:
-                results.append(ValidationResult(
-                    level=ValidationLevel.ERROR,
-                    validation_type=ValidationType.STRUCTURAL,
-                    message="Edge missing cause node",
-                    edge_id=edge.identifier
-                ))
+                results.append(msg.edge_missing_cause(edge.identifier))
 
             if not edge.effect:
-                results.append(ValidationResult(
-                    level=ValidationLevel.ERROR,
-                    validation_type=ValidationType.STRUCTURAL,
-                    message="Edge missing effect node",
-                    edge_id=edge.identifier
-                ))
+                results.append(msg.edge_missing_effect(edge.identifier))
 
             relations = edge.get_relations()
             if not relations:
-                results.append(ValidationResult(
-                    level=ValidationLevel.ERROR,
-                    validation_type=ValidationType.STRUCTURAL,
-                    message="Edge has no relations",
-                    edge_id=edge.identifier
-                ))
+                results.append(msg.edge_no_relations(edge.identifier))
 
             if edge.cause == edge.effect:
-                results.append(ValidationResult(
-                    level=ValidationLevel.WARNING,
-                    validation_type=ValidationType.STRUCTURAL,
-                    message="Self-loop edge detected",
-                    edge_id=edge.identifier
-                ))
+                results.append(msg.self_loop_edge(edge.identifier))
 
         return results
 
     def _validate_prov_constraints(self, wrapper: ProvGraphWrapper,
-                                   template: Optional[TraversalInformationTemplate] = None) -> List[ValidationResult]:
+                                   template: Optional[CpmBundleTemplate] = None) -> List[ValidationResult]:
         results = []
 
         for edge in wrapper.get_edges():
@@ -336,35 +253,23 @@ class CpmValidator:
 
             if kind == 'PROV_USAGE':
                 if cause_kind != 'PROV_ENTITY' or effect_kind != 'PROV_ACTIVITY':
-                    results.append(ValidationResult(
-                        level=ValidationLevel.ERROR,
-                        validation_type=ValidationType.SEMANTIC,
-                        message=f"Invalid Usage relation: {cause_kind} -> {effect_kind}",
-                        edge_id=edge.identifier
-                    ))
+                    results.append(msg.invalid_usage_relation(
+                        cause_kind, effect_kind, edge.identifier))
 
             elif kind == 'PROV_GENERATION':
                 if cause_kind != 'PROV_ACTIVITY' or effect_kind != 'PROV_ENTITY':
-                    results.append(ValidationResult(
-                        level=ValidationLevel.ERROR,
-                        validation_type=ValidationType.SEMANTIC,
-                        message=f"Invalid Generation relation: {cause_kind} -> {effect_kind}",
-                        edge_id=edge.identifier
-                    ))
+                    results.append(msg.invalid_generation_relation(
+                        cause_kind, effect_kind, edge.identifier))
 
             elif kind == 'PROV_ASSOCIATION':
                 if cause_kind != 'PROV_ACTIVITY' or effect_kind != 'PROV_AGENT':
-                    results.append(ValidationResult(
-                        level=ValidationLevel.ERROR,
-                        validation_type=ValidationType.SEMANTIC,
-                        message=f"Invalid Association relation: {cause_kind} -> {effect_kind}",
-                        edge_id=edge.identifier
-                    ))
+                    results.append(msg.invalid_association_relation(
+                        cause_kind, effect_kind, edge.identifier))
 
         return results
 
     def _validate_cross_part_consistency(self, wrapper: ProvGraphWrapper,
-                                         template: Optional[TraversalInformationTemplate] = None) -> List[ValidationResult]:
+                                         template: Optional[CpmBundleTemplate] = None) -> List[ValidationResult]:
         results = []
 
         cross_part_edges = self.traversal_strategy.detect_cross_part_edges(wrapper)
@@ -373,27 +278,16 @@ class CpmValidator:
             traversal_info = self.traversal_strategy.get_traversal_information(edge)
 
             if not traversal_info.get('is_cross_part'):
-                results.append(ValidationResult(
-                    level=ValidationLevel.ERROR,
-                    validation_type=ValidationType.CROSS_PART,
-                    message="Cross-part edge not properly marked",
-                    edge_id=edge.identifier
-                ))
+                results.append(msg.cross_part_not_marked(edge.identifier))
 
             cost = traversal_info.get('traversal_cost', 0)
             if cost > 10.0:
-                results.append(ValidationResult(
-                    level=ValidationLevel.WARNING,
-                    validation_type=ValidationType.TRAVERSAL,
-                    message=f"High traversal cost: {cost}",
-                    edge_id=edge.identifier,
-                    details={'traversal_cost': cost}
-                ))
+                results.append(msg.high_traversal_cost(cost, edge.identifier))
 
         return results
 
     def _validate_traversal_properties(self, wrapper: ProvGraphWrapper,
-                                       template: Optional[TraversalInformationTemplate] = None) -> List[ValidationResult]:
+                                       template: Optional[CpmBundleTemplate] = None) -> List[ValidationResult]:
         results = []
 
         nodes = wrapper.get_nodes()
@@ -411,17 +305,13 @@ class CpmValidator:
                 dfs(nodes[0], visited)
 
                 if len(visited) < len(nodes):
-                    results.append(ValidationResult(
-                        level=ValidationLevel.WARNING,
-                        validation_type=ValidationType.TRAVERSAL,
-                        message=f"Graph not fully connected: {len(visited)}/{len(nodes)} nodes reachable",
-                        details={'reachable_nodes': len(visited), 'total_nodes': len(nodes)}
-                    ))
+                    results.append(msg.graph_not_connected(
+                        len(visited), len(nodes)))
 
         return results
 
     def _validate_bundle_structure(self, wrapper: ProvGraphWrapper,
-                                   template: Optional[TraversalInformationTemplate] = None) -> List[ValidationResult]:
+                                   template: Optional[CpmBundleTemplate] = None) -> List[ValidationResult]:
         results = []
 
         doc = wrapper._prov_document
@@ -430,69 +320,22 @@ class CpmValidator:
                 for bundle in doc.bundles:
                     bundle_id = bundle.identifier if hasattr(bundle, 'identifier') else None
                     if not hasattr(bundle, 'records') or not bundle.records:
-                        results.append(ValidationResult(
-                            level=ValidationLevel.WARNING,
-                            validation_type=ValidationType.STRUCTURAL,
-                            message="Empty bundle detected",
-                            bundle_id=bundle_id
-                        ))
+                        results.append(msg.empty_bundle(bundle_id))
             except AttributeError:
                 try:
                     if hasattr(doc.bundles, 'items'):
                         for bundle_id, bundle in doc.bundles.items():
                             if not hasattr(bundle, 'records') or not bundle.records:
-                                results.append(ValidationResult(
-                                    level=ValidationLevel.WARNING,
-                                    validation_type=ValidationType.STRUCTURAL,
-                                    message="Empty bundle detected",
-                                    bundle_id=bundle_id
-                                ))
-                except Exception:
+                                results.append(msg.empty_bundle(bundle_id))
+                except (AttributeError, TypeError):
                     pass
         else:
-            results.append(ValidationResult(
-                level=ValidationLevel.INFO,
-                validation_type=ValidationType.STRUCTURAL,
-                message="No bundles found in document"
-            ))
-
-        return results
-
-    def _validate_identifier_uniqueness(self, wrapper: ProvGraphWrapper,
-                                        template: Optional[TraversalInformationTemplate] = None) -> List[ValidationResult]:
-        results = []
-
-        node_ids = {}
-        edge_ids = {}
-
-        for node in wrapper.get_nodes():
-            if node.identifier:
-                if node.identifier in node_ids:
-                    results.append(ValidationResult(
-                        level=ValidationLevel.ERROR,
-                        validation_type=ValidationType.STRUCTURAL,
-                        message=f"Duplicate node identifier: {node.identifier}",
-                        node_id=node.identifier
-                    ))
-                else:
-                    node_ids[node.identifier] = node
-
-        for edge in wrapper.get_edges():
-            if edge.identifier:
-                if edge.identifier in edge_ids:
-                    results.append(ValidationResult(
-                        level=ValidationLevel.ERROR,
-                        validation_type=ValidationType.STRUCTURAL,
-                        message=f"Duplicate edge identifier: {edge.identifier}",
-                        edge_id=edge.identifier
-                    ))
-                else:
-                    edge_ids[edge.identifier] = edge
+            results.append(msg.no_bundles())
 
         return results
 
     def _validate_attribute_consistency(self, wrapper: ProvGraphWrapper,
-                                        template: Optional[TraversalInformationTemplate] = None) -> List[ValidationResult]:
+                                        template: Optional[CpmBundleTemplate] = None) -> List[ValidationResult]:
         results = []
 
         for node in wrapper.get_nodes():
@@ -506,18 +349,13 @@ class CpmValidator:
                             types.add(str(element_type))
 
                 if len(types) > 1:
-                    results.append(ValidationResult(
-                        level=ValidationLevel.WARNING,
-                        validation_type=ValidationType.SEMANTIC,
-                        message=f"Node has elements with inconsistent types: {types}",
-                        node_id=node.identifier,
-                        details={'types': list(types)}
-                    ))
+                    results.append(msg.inconsistent_node_types(
+                        types, node.identifier))
 
         return results
 
     def _validate_template_compliance(self, wrapper: ProvGraphWrapper,
-                                      template: TraversalInformationTemplate) -> List[ValidationResult]:
+                                      template: CpmBundleTemplate) -> List[ValidationResult]:
         results = []
 
         if not template:
@@ -532,12 +370,8 @@ class CpmValidator:
                 main_activities.append(node)
 
         if not main_activities:
-            results.append(ValidationResult(
-                level=ValidationLevel.ERROR,
-                validation_type=ValidationType.TEMPLATE_COMPLIANCE,
-                message="Missing required main activity",
-                details={'template_main_activity': template.main_activity.id}
-            ))
+            results.append(msg.template_missing_main_activity(
+                template.main_activity.id))
 
         backward_connectors = []
         forward_connectors = []
@@ -550,20 +384,12 @@ class CpmValidator:
                 forward_connectors.append(node)
 
         if template.backward_connectors and not backward_connectors:
-            results.append(ValidationResult(
-                level=ValidationLevel.WARNING,
-                validation_type=ValidationType.TEMPLATE_COMPLIANCE,
-                message="Template specifies backward connectors but none found in graph",
-                details={'expected_backward_connectors': len(template.backward_connectors)}
-            ))
+            results.append(msg.template_missing_backward_connectors(
+                len(template.backward_connectors)))
 
         if template.forward_connectors and not forward_connectors:
-            results.append(ValidationResult(
-                level=ValidationLevel.WARNING,
-                validation_type=ValidationType.TEMPLATE_COMPLIANCE,
-                message="Template specifies forward connectors but none found in graph",
-                details={'expected_forward_connectors': len(template.forward_connectors)}
-            ))
+            results.append(msg.template_missing_forward_connectors(
+                len(template.forward_connectors)))
 
         return results
 
@@ -578,7 +404,7 @@ class CpmValidator:
 
 
 def validate_cpm_graph(wrapper: ProvGraphWrapper,
-                       template: Optional[TraversalInformationTemplate] = None,
+                       template: Optional[CpmBundleTemplate] = None,
                        validator: Optional[CpmValidator] = None) -> ValidationReport:
     """
     Convenience function to validate a CPM graph.
@@ -609,7 +435,7 @@ def create_validation_rule(validation_type: ValidationType, level: ValidationLev
         Decorator function
     """
     def decorator(func):
-        def wrapper(wrapper: ProvGraphWrapper, template: Optional[TraversalInformationTemplate] = None):
+        def wrapper(wrapper: ProvGraphWrapper, template: Optional[CpmBundleTemplate] = None):
             try:
                 messages = func(wrapper, template)
                 if isinstance(messages, str):
@@ -618,10 +444,10 @@ def create_validation_rule(validation_type: ValidationType, level: ValidationLev
                 return [ValidationResult(
                     level=level,
                     validation_type=validation_type,
-                    message=msg
-                ) for msg in messages if msg]
+                    message=m
+                ) for m in messages if m]
 
-            except Exception as e:
+            except (AttributeError, LookupError, RuntimeError, TypeError, ValueError) as e:
                 return ValidationResult(
                     level=ValidationLevel.ERROR,
                     validation_type=validation_type,

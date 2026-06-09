@@ -4,15 +4,26 @@ CPM Factory Implementation
 Provides factory methods for creating CPM nodes and edges with proper isolation and cloning.
 """
 
+import logging
 from typing import List, Optional, Dict, Any, Union, Set
 from abc import ABC, abstractmethod
 from prov.model import ProvDocument, ProvBundle, ProvRecord, ProvRelation, ProvEntity, ProvActivity, ProvAgent
 from prov.identifier import QualifiedName
 import copy
 
+from src.cpm.namespaces import (
+    CPM_NAMESPACE_URI,
+    EXAMPLE_NAMESPACE_PREFIX,
+    EXAMPLE_NAMESPACE_URI,
+    PROV_NAMESPACE_URI,
+    ensure_namespace,
+)
 from .node import GraphNode, DividedGraphNode, MergedGraphNode
 from .edge import GraphEdge, DividedGraphEdge, MergedGraphEdge
 from .wrapper import ProvGraphWrapper
+
+
+LOGGER = logging.getLogger(__name__)
 
 
 class ICpmFactory(ABC):
@@ -284,170 +295,142 @@ class CpmFactoryManager:
         """
         doc = ProvDocument()
 
-        # Collect namespaces from all elements
+        self._add_element_namespaces(doc, nodes)
+        self._ensure_default_namespaces(doc)
+
+        bundle = self._create_bundle(doc)
+        self._add_nodes_to_bundle(bundle, nodes)
+        self._add_edges_to_bundle(bundle, edges)
+
+        return doc
+
+    def _add_element_namespaces(self, doc: ProvDocument, nodes: List[GraphNode]) -> None:
+        """Copy namespaces referenced by node identifiers into a new document."""
         namespaces = set()
         for node in nodes:
             for element in node.elements:
-                if hasattr(element, 'identifier') and element.identifier:
-                    ns = element.identifier.namespace
-                    if ns and ns not in namespaces:
-                        namespaces.add(ns)
-                        doc.add_namespace(ns.prefix, str(ns.uri))
+                identifier = getattr(element, 'identifier', None)
+                namespace = getattr(identifier, 'namespace', None)
+                if not namespace:
+                    continue
 
-        # Add default namespaces if not present
-        if not any(ns.prefix == 'prov' for ns in doc.namespaces):
-            doc.add_namespace('prov', 'http://www.w3.org/ns/prov#')
-        if not any(ns.prefix == 'cpm' for ns in doc.namespaces):
-            doc.add_namespace('cpm', 'http://dke.univie.ac.at/cpm#')
+                namespace_key = (namespace.prefix, str(namespace.uri))
+                if namespace_key in namespaces:
+                    continue
 
-        # Ensure we have a default namespace for bundle
-        if not any(ns.prefix == 'ex' for ns in doc.namespaces):
-            doc.add_namespace('ex', 'http://example.org/')
+                namespaces.add(namespace_key)
+                doc.add_namespace(namespace.prefix, str(namespace.uri))
 
-        # Create a bundle with proper qualified name
-        bundle_ns = None
-        for ns in doc.namespaces:
-            if ns.prefix == 'ex':
-                bundle_ns = ns
-                break
+    def _ensure_default_namespaces(self, doc: ProvDocument) -> None:
+        """Ensure the reconstructed document includes the core CPM namespaces."""
+        ensure_namespace(doc, 'prov', PROV_NAMESPACE_URI)
+        ensure_namespace(doc, 'cpm', CPM_NAMESPACE_URI)
+        ensure_namespace(doc, EXAMPLE_NAMESPACE_PREFIX, EXAMPLE_NAMESPACE_URI)
 
-        if bundle_ns:
-            bundle_id = bundle_ns['bundle']
-        else:
-            # Fallback to first available namespace
-            bundle_id = list(doc.namespaces)[0]['bundle']
+    def _create_bundle(self, doc: ProvDocument):
+        """Create a stable bundle identifier for reconstructed documents."""
+        bundle_ns = ensure_namespace(doc, EXAMPLE_NAMESPACE_PREFIX, EXAMPLE_NAMESPACE_URI)
+        return doc.bundle(bundle_ns['bundle'])
 
-        bundle = doc.bundle(bundle_id)
-
-        # Track added element identifiers to avoid duplicates
+    def _add_nodes_to_bundle(self, bundle, nodes: List[GraphNode]) -> None:
+        """Add reconstructed node records to the output bundle."""
         added_elements = set()
-
-        # Add nodes to bundle
         for node in nodes:
             for element in node.elements:
                 elem_id = element.identifier if hasattr(element, 'identifier') else None
-
-                # Skip if already added
                 if elem_id and elem_id in added_elements:
                     continue
 
-                # Add element to bundle based on type
+                attrs = list(element.attributes) if hasattr(element, 'attributes') else []
+
                 if isinstance(element, ProvEntity):
-                    # Collect attributes
-                    attrs = []
-                    if hasattr(element, 'attributes'):
-                        attrs = list(element.attributes)
                     bundle.entity(elem_id, other_attributes=attrs)
-
                 elif isinstance(element, ProvActivity):
-                    # Collect attributes including start/end times
-                    attrs = []
-                    if hasattr(element, 'attributes'):
-                        attrs = list(element.attributes)
                     bundle.activity(elem_id, other_attributes=attrs)
-
                 elif isinstance(element, ProvAgent):
-                    # Collect attributes
-                    attrs = []
-                    if hasattr(element, 'attributes'):
-                        attrs = list(element.attributes)
                     bundle.agent(elem_id, other_attributes=attrs)
 
                 if elem_id:
                     added_elements.add(elem_id)
 
-        # Track added relation identifiers to avoid duplicates
+    def _add_edges_to_bundle(self, bundle, edges: List[GraphEdge]) -> None:
+        """Add reconstructed relation records to the output bundle."""
         added_relations = set()
-
-        # Add edges to bundle
         for edge in edges:
             for relation in edge.relations:
                 rel_id = relation.identifier if hasattr(relation, 'identifier') else None
-
-                # Skip if already added
                 if rel_id and rel_id in added_relations:
                     continue
 
-                # Get formal attributes to extract endpoints
-                formal_attrs = list(relation.formal_attributes) if hasattr(relation, 'formal_attributes') else []
-
-                # Collect other attributes
-                other_attrs = []
-                if hasattr(relation, 'extra_attributes'):
-                    other_attrs = list(relation.extra_attributes)
-
-                # Add relation to bundle based on type
-                relation_type = type(relation).__name__
-
-                try:
-                    if 'Usage' in relation_type and len(formal_attrs) >= 2:
-                        # used(activity, entity, ...)
-                        activity_id = formal_attrs[0][1]
-                        entity_id = formal_attrs[1][1]
-                        bundle.usage(activity_id, entity_id, identifier=rel_id, other_attributes=other_attrs)
-
-                    elif 'Generation' in relation_type and len(formal_attrs) >= 2:
-                        # wasGeneratedBy(entity, activity, ...)
-                        entity_id = formal_attrs[0][1]
-                        activity_id = formal_attrs[1][1]
-                        bundle.generation(entity_id, activity_id, identifier=rel_id, other_attributes=other_attrs)
-
-                    elif 'Derivation' in relation_type and len(formal_attrs) >= 2:
-                        # wasDerivedFrom(generated, used, ...)
-                        generated_id = formal_attrs[0][1]
-                        used_id = formal_attrs[1][1]
-                        bundle.derivation(generated_id, used_id, identifier=rel_id, other_attributes=other_attrs)
-
-                    elif 'Attribution' in relation_type and len(formal_attrs) >= 2:
-                        # wasAttributedTo(entity, agent, ...)
-                        entity_id = formal_attrs[0][1]
-                        agent_id = formal_attrs[1][1]
-                        bundle.attribution(entity_id, agent_id, identifier=rel_id, other_attributes=other_attrs)
-
-                    elif 'Association' in relation_type and len(formal_attrs) >= 2:
-                        # wasAssociatedWith(activity, agent, ...)
-                        activity_id = formal_attrs[0][1]
-                        agent_id = formal_attrs[1][1]
-                        bundle.association(activity_id, agent_id, identifier=rel_id, other_attributes=other_attrs)
-
-                    elif 'Communication' in relation_type and len(formal_attrs) >= 2:
-                        # wasInformedBy(informed, informant, ...)
-                        informed_id = formal_attrs[0][1]
-                        informant_id = formal_attrs[1][1]
-                        bundle.communication(informed_id, informant_id, identifier=rel_id, other_attributes=other_attrs)
-
-                    elif 'Delegation' in relation_type and len(formal_attrs) >= 2:
-                        # actedOnBehalfOf(delegate, responsible, ...)
-                        delegate_id = formal_attrs[0][1]
-                        responsible_id = formal_attrs[1][1]
-                        bundle.delegation(delegate_id, responsible_id, identifier=rel_id, other_attributes=other_attrs)
-
-                    elif 'Influence' in relation_type and len(formal_attrs) >= 2:
-                        # wasInfluencedBy(influencee, influencer, ...)
-                        influencee_id = formal_attrs[0][1]
-                        influencer_id = formal_attrs[1][1]
-                        bundle.influence(influencee_id, influencer_id, identifier=rel_id, other_attributes=other_attrs)
-
-                    elif 'Specialization' in relation_type and len(formal_attrs) >= 2:
-                        # specializationOf(specific, general)
-                        specific_id = formal_attrs[0][1]
-                        general_id = formal_attrs[1][1]
-                        bundle.specialization(specific_id, general_id)
-
-                    elif 'Alternate' in relation_type and len(formal_attrs) >= 2:
-                        # alternateOf(alternate1, alternate2)
-                        alt1_id = formal_attrs[0][1]
-                        alt2_id = formal_attrs[1][1]
-                        bundle.alternate(alt1_id, alt2_id)
-
-                except Exception:
-                    # If relation cannot be added, skip it
-                    pass
+                self._add_relation_to_bundle(bundle, relation, rel_id)
 
                 if rel_id:
                     added_relations.add(rel_id)
 
-        return doc
+    def _add_relation_to_bundle(self, bundle, relation: ProvRelation, rel_id: Optional[QualifiedName]) -> None:
+        """Add a single relation record to the reconstructed bundle."""
+        formal_attrs = list(relation.formal_attributes) if hasattr(relation, 'formal_attributes') else []
+        other_attrs = list(relation.extra_attributes) if hasattr(relation, 'extra_attributes') else []
+        relation_type = type(relation).__name__
+
+        try:
+            if 'Usage' in relation_type and len(formal_attrs) >= 2:
+                activity_id = formal_attrs[0][1]
+                entity_id = formal_attrs[1][1]
+                bundle.usage(activity_id, entity_id, identifier=rel_id, other_attributes=other_attrs)
+
+            elif 'Generation' in relation_type and len(formal_attrs) >= 2:
+                entity_id = formal_attrs[0][1]
+                activity_id = formal_attrs[1][1]
+                bundle.generation(entity_id, activity_id, identifier=rel_id, other_attributes=other_attrs)
+
+            elif 'Derivation' in relation_type and len(formal_attrs) >= 2:
+                generated_id = formal_attrs[0][1]
+                used_id = formal_attrs[1][1]
+                bundle.derivation(generated_id, used_id, identifier=rel_id, other_attributes=other_attrs)
+
+            elif 'Attribution' in relation_type and len(formal_attrs) >= 2:
+                entity_id = formal_attrs[0][1]
+                agent_id = formal_attrs[1][1]
+                bundle.attribution(entity_id, agent_id, identifier=rel_id, other_attributes=other_attrs)
+
+            elif 'Association' in relation_type and len(formal_attrs) >= 2:
+                activity_id = formal_attrs[0][1]
+                agent_id = formal_attrs[1][1]
+                bundle.association(activity_id, agent_id, identifier=rel_id, other_attributes=other_attrs)
+
+            elif 'Communication' in relation_type and len(formal_attrs) >= 2:
+                informed_id = formal_attrs[0][1]
+                informant_id = formal_attrs[1][1]
+                bundle.communication(informed_id, informant_id, identifier=rel_id, other_attributes=other_attrs)
+
+            elif 'Delegation' in relation_type and len(formal_attrs) >= 2:
+                delegate_id = formal_attrs[0][1]
+                responsible_id = formal_attrs[1][1]
+                bundle.delegation(delegate_id, responsible_id, identifier=rel_id, other_attributes=other_attrs)
+
+            elif 'Influence' in relation_type and len(formal_attrs) >= 2:
+                influencee_id = formal_attrs[0][1]
+                influencer_id = formal_attrs[1][1]
+                bundle.influence(influencee_id, influencer_id, identifier=rel_id, other_attributes=other_attrs)
+
+            elif 'Specialization' in relation_type and len(formal_attrs) >= 2:
+                specific_id = formal_attrs[0][1]
+                general_id = formal_attrs[1][1]
+                bundle.specialization(specific_id, general_id)
+
+            elif 'Alternate' in relation_type and len(formal_attrs) >= 2:
+                alt1_id = formal_attrs[0][1]
+                alt2_id = formal_attrs[1][1]
+                bundle.alternate(alt1_id, alt2_id)
+
+            elif 'Membership' in relation_type and len(formal_attrs) >= 2:
+                collection_id = formal_attrs[0][1]
+                entity_id = formal_attrs[1][1]
+                bundle.membership(collection_id, entity_id)
+
+        except (AttributeError, IndexError, TypeError, ValueError) as exc:
+            LOGGER.warning("Skipping relation %s during document reconstruction: %s", relation_type, exc)
 
     def get_available_factory_types(self) -> List[str]:
         return list(self._factories.keys())

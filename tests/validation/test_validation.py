@@ -9,8 +9,8 @@ from src.cpm.validation import (
     validate_cpm_graph, TraversalInformationStrategy
 )
 from src.cpm.template import (
-    TraversalInformationDeserializer, TraversalInformationTemplate,
-    TraversalInformationSerializer
+    CpmBundleDeserializer, CpmBundleTemplate,
+    CpmBundleSerializer
 )
 from src.graph.wrapper import ProvGraphWrapper
 from prov.model import ProvDocument
@@ -62,14 +62,14 @@ class TestCpmBasicFunctionality(unittest.TestCase):
         }
 
         # Test deserialization
-        template = TraversalInformationDeserializer.from_json(template_data)
+        template = CpmBundleDeserializer.from_json(template_data)
         assert template.bundle_name == "ex:testBundle"
         assert template.main_activity.id == "ex:mainActivity"
         assert len(template.forward_connectors) == 1
 
         # Test serialization round-trip
-        json_str = TraversalInformationSerializer.to_json(template)
-        restored = TraversalInformationDeserializer.from_json(json_str)
+        json_str = CpmBundleSerializer.to_json(template)
+        restored = CpmBundleDeserializer.from_json(json_str)
         assert template.bundle_name == restored.bundle_name
 
         # Test mapping to PROV
@@ -86,7 +86,7 @@ class TestCpmBasicFunctionality(unittest.TestCase):
         assert len(forward_connectors) > 0
 
 
-def create_test_template() -> TraversalInformationTemplate:
+def create_test_template() -> CpmBundleTemplate:
     """Create a simple test template"""
     template_data = {
         "prefixes": {
@@ -103,7 +103,7 @@ def create_test_template() -> TraversalInformationTemplate:
             "id": "ex:output"
         }]
     }
-    return TraversalInformationDeserializer.from_json(template_data)
+    return CpmBundleDeserializer.from_json(template_data)
 
 
 def create_test_graph() -> ProvGraphWrapper:
@@ -266,7 +266,7 @@ def _make_wrapper():
 
 
 def _make_template():
-    return TraversalInformationDeserializer.from_json({
+    return CpmBundleDeserializer.from_json({
         "prefixes": STANDARD_PREFIXES,
         "bundleName": "ex:bundle",
         "mainActivity": {
@@ -326,6 +326,11 @@ class TestCpmValidatorExtended:
         report = v.validate(w)
         assert isinstance(report, ValidationReport)
         assert isinstance(report.is_valid, bool)
+
+    def test_validate_does_not_report_internal_rule_failure(self):
+        v = CpmValidator()
+        report = v.validate(_make_wrapper())
+        assert not any("Validation rule failed" in result.message for result in report.results)
 
     def test_validate_empty_wrapper(self):
         v = CpmValidator()

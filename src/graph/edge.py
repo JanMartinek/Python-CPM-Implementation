@@ -12,6 +12,21 @@ if TYPE_CHECKING:
     from .node import GraphNode
 
 
+def _merge_record_attributes(target_record: ProvRelation, source_record: ProvRelation) -> None:
+    """Merge missing PROV attributes from one relation into another."""
+    if not hasattr(target_record, 'attributes') or not hasattr(source_record, 'attributes'):
+        return
+
+    existing_attributes = list(target_record.attributes)
+    missing_attributes = [
+        attribute
+        for attribute in source_record.attributes
+        if attribute not in existing_attributes
+    ]
+    if missing_attributes and hasattr(target_record, 'add_attributes'):
+        target_record.add_attributes(missing_attributes)
+
+
 class GraphEdge:
     """
     Represents an edge in the provenance graph with enhanced relation management.
@@ -107,7 +122,7 @@ class GraphEdge:
             if (hasattr(existing_relation, 'identifier') and
                 hasattr(duplicate_relation, 'identifier') and
                     existing_relation.identifier == duplicate_relation.identifier):
-                # Merge attributes - simplified implementation
+                _merge_record_attributes(existing_relation, duplicate_relation)
                 return
 
         # Add as new relation
@@ -147,6 +162,10 @@ class GraphEdge:
         if hasattr(self.prov_relation, 'attributes'):
             return list(self.prov_relation.attributes)
         return []
+
+    def get_relations(self) -> List[ProvRelation]:
+        """Return the PROV relations represented by this edge."""
+        return self.relations.copy()
 
     def has_attribute(self, attribute_name: str) -> bool:
         """Check if edge has a specific attribute"""
@@ -230,10 +249,7 @@ class DividedGraphEdge(GraphEdge):
         for relation in self.relations:
             if (hasattr(relation, 'identifier') and hasattr(duplicate_relation, 'identifier') and
                     relation.identifier == duplicate_relation.identifier):
-                # Merge attributes - simplified implementation
-                if hasattr(duplicate_relation, 'attributes') and hasattr(relation, 'attributes'):
-                    # TODO: Properly merge PROV attributes
-                    pass
+                _merge_record_attributes(relation, duplicate_relation)
                 return
 
         # No matching relation found, add as new
@@ -296,10 +312,7 @@ class MergedGraphEdge(GraphEdge):
         if (hasattr(self.prov_relation, 'identifier') and
             hasattr(duplicate_relation, 'identifier') and
                 self.prov_relation.identifier == duplicate_relation.identifier):
-            # Merge attributes - simplified implementation
-            if hasattr(duplicate_relation, 'attributes') and hasattr(self.prov_relation, 'attributes'):
-                # TODO: Properly merge PROV attributes
-                pass
+            _merge_record_attributes(self.prov_relation, duplicate_relation)
 
     def clone(self) -> 'GraphEdge':
         """Create a clone of this merged edge"""

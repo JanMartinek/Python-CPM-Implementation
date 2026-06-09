@@ -832,14 +832,64 @@ class TestAdvancedTemplateProcessor:
         assert "mainActivity" in result
         assert result["mainActivity"]["id"] == "embrc:act"
 
+    def test_transform_embrc_template_with_realistic_graph(self):
+        p = AdvancedTemplateProcessor()
+        embrc = {
+            "@context": {
+                "prov": "http://www.w3.org/ns/prov#",
+                "dcat": "http://www.w3.org/ns/dcat#",
+            },
+            "@id": "embrc:bundle",
+            "@graph": [
+                {
+                    "@id": "embrc:act",
+                    "@type": ["Action", "prov:Activity"],
+                    "startTime": "2024-01-01",
+                    "endTime": "2024-01-02",
+                    "prov:used": [{"@id": "embrc:e1"}],
+                    "prov:generated": {"@id": "embrc:e2"},
+                    "prov:wasAssociatedWith": {"@id": "embrc:sender"},
+                    "prov:qualifiedAssociation": [
+                        {
+                            "prov:agent": {"@id": "embrc:sender"},
+                            "dcat:hadRole": "providing agent",
+                        },
+                        {
+                            "prov:agent": {"@id": "embrc:receiver"},
+                            "dcat:hadRole": "receiving agent",
+                        },
+                    ],
+                },
+                {
+                    "@id": "embrc:e1",
+                    "@type": ["Thing", "prov:Entity"],
+                    "prov:wasDerivedFrom": {"@id": "embrc:src"},
+                },
+                {"@id": "embrc:e2", "@type": ["Thing", "prov:Entity"]},
+            ],
+        }
+
+        result = p.transform_embrc_template(embrc)
+        assert result["mainActivity"]["id"] == "embrc:act"
+        assert result["mainActivity"]["startTime"] == "2024-01-01"
+        assert result["mainActivity"]["used"] == [{"targetId": "embrc:e1"}]
+        assert result["mainActivity"]["generated"] == ["embrc:e2"]
+        assert result["backwardConnectors"][0]["id"] == "embrc:e1"
+        assert result["backwardConnectors"][0]["derivedFrom"] == ["embrc:src"]
+        assert result["forwardConnectors"][0]["id"] == "embrc:e2"
+        assert result["senderAgents"] == [{"id": "embrc:sender"}]
+        assert result["receiverAgents"] == [{"id": "embrc:receiver"}]
+
     def test_is_activity(self):
         p = AdvancedTemplateProcessor()
         assert p._is_activity({"@type": "Activity"})
+        assert p._is_activity({"@type": ["Action", "prov:Activity"]})
         assert not p._is_activity({"@type": "Entity"})
 
     def test_is_entity(self):
         p = AdvancedTemplateProcessor()
         assert p._is_entity({"@type": "Entity"})
+        assert p._is_entity({"@type": ["Thing", "prov:Entity"]})
         assert not p._is_entity({"@type": "Activity"})
 
     def test_transform_connector_with_derivation(self):
@@ -939,6 +989,45 @@ class TestPipeline:
         }
         t = p.transform_and_validate(embrc, source_format="embrc")
         assert t is not None
+
+    def test_embrc_format_realistic_graph(self):
+        p = TemplateTransformationPipeline()
+        embrc = {
+            "@context": {
+                "prov": "http://www.w3.org/ns/prov#",
+                "dcat": "http://www.w3.org/ns/dcat#",
+            },
+            "@id": "embrc:bundle",
+            "@graph": [
+                {
+                    "@id": "embrc:act",
+                    "@type": ["Action", "prov:Activity"],
+                    "startTime": "2024-01-01",
+                    "endTime": "2024-01-02",
+                    "prov:used": [{"@id": "embrc:e1"}],
+                    "prov:generated": {"@id": "embrc:e2"},
+                    "prov:qualifiedAssociation": [
+                        {
+                            "prov:agent": {"@id": "embrc:sender"},
+                            "dcat:hadRole": "providing agent",
+                        },
+                        {
+                            "prov:agent": {"@id": "embrc:receiver"},
+                            "dcat:hadRole": "receiving agent",
+                        },
+                    ],
+                },
+                {"@id": "embrc:e1", "@type": ["Thing", "prov:Entity"]},
+                {"@id": "embrc:e2", "@type": ["Thing", "prov:Entity"]},
+            ],
+        }
+        t = p.transform_and_validate(embrc, source_format="embrc")
+        assert t.main_activity.used[0].target_id == "embrc:e1"
+        assert t.main_activity.generated == ["embrc:e2"]
+        assert len(t.backward_connectors) == 1
+        assert len(t.forward_connectors) == 1
+        assert len(t.sender_agents) == 1
+        assert len(t.receiver_agents) == 1
 
     def test_mou_format_passthrough(self):
         p = TemplateTransformationPipeline()

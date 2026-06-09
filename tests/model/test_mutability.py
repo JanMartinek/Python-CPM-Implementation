@@ -8,7 +8,7 @@ This unified test suite demonstrates a complete workflow from template creation 
 import pytest
 from prov.model import ProvDocument
 from src.cpm.constants import CPM_MAIN_ACTIVITY, CPM_FORWARD_CONNECTOR, CPM_BACKWARD_CONNECTOR
-from src.cpm.template import TraversalInformationDeserializer
+from src.cpm.template import CpmBundleDeserializer
 from src.cpm.model import (
     CpmDocument, TemplateProvMapper,
     CpmDocumentError, NodeNotFoundError, MultipleNodesError, InvalidOperationError
@@ -157,7 +157,7 @@ def test_unified_template_to_advanced_operations():
 
     # Start with template-based document
     template_data = create_base_template()
-    template = TraversalInformationDeserializer.from_json(template_data)
+    template = CpmBundleDeserializer.from_json(template_data)
     cpm_doc = CpmDocument.from_template(template)
     initial_stats = cpm_doc.get_statistics()
 
@@ -213,7 +213,7 @@ def test_unified_template_to_advanced_operations():
         "backwardConnectors": [{"id": "ex:analysisInput"}]
     }
 
-    template2 = TraversalInformationDeserializer.from_json(template_data2)
+    template2 = CpmBundleDeserializer.from_json(template_data2)
     doc2 = CpmDocument.from_template(template2)
 
     # Test merging
@@ -226,7 +226,7 @@ def test_unified_comprehensive_workflow():
 
     # Phase 1: Template-based initialization
     template_data = create_base_template()
-    template = TraversalInformationDeserializer.from_json(template_data)
+    template = CpmBundleDeserializer.from_json(template_data)
     workflow_doc = CpmDocument.from_template(template)
 
     # Phase 2: Dynamic content addition

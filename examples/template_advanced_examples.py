@@ -18,12 +18,12 @@ import json
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
 from src.cpm.template import (
-    TraversalInformationDeserializer,
-    TraversalInformationSerializer,
+    CpmBundleDeserializer,
+    CpmBundleSerializer,
     TemplateSchemaValidator,
     TemplateTransformationPipeline,
     TemplateAgentAnalyzer,
-    TraversalInformationTemplate,
+    CpmBundleTemplate,
     MainActivityTemplate,
     ConnectorTemplate,
     AgentTemplate
@@ -38,7 +38,7 @@ def demo_basic_workflow():
     print("=" * 60)
 
     # Create a simple template programmatically
-    template = TraversalInformationTemplate(
+    template = CpmBundleTemplate(
         prefixes={
             'cpm': 'http://provcpm.org/',
             'ex': 'http://example.org/'
@@ -58,24 +58,24 @@ def demo_basic_workflow():
     )
 
     # Serialize to JSON
-    json_output = TraversalInformationSerializer.to_json(template, indent=2)
+    json_output = CpmBundleSerializer.to_json(template, indent=2)
     print("\nSerialized Template:")
     print(json_output[:500] + "...")
 
     # Deserialize back
-    template_roundtrip = TraversalInformationDeserializer.from_json(json_output)
+    template_roundtrip = CpmBundleDeserializer.from_json(json_output)
     print(f"\n✅ Round-trip successful! Bundle: {template_roundtrip.bundle_name}")
 
 
 
 def demo_quality_analysis():
-    """Demonstrate quality analysis (Python-exclusive)"""
+    """Demonstrate quality analysis"""
     print("\n" + "=" * 60)
-    print("DEMO 2: Quality Analysis (Python-EXCLUSIVE)")
+    print("DEMO 2: Quality Analysis")
     print("=" * 60)
 
     # Create template with various quality indicators
-    template = TraversalInformationTemplate(
+    template = CpmBundleTemplate(
         prefixes={
             'cpm': 'http://provcpm.org/',
             'ex': 'http://example.org/',
@@ -126,13 +126,13 @@ def demo_quality_analysis():
 
 
 def demo_agent_overlap_analysis():
-    """Demonstrate agent overlap detection (Python-exclusive)"""
+    """Demonstrate agent overlap detection"""
     print("\n" + "=" * 60)
-    print("DEMO 3: Agent Overlap Analysis (Python-EXCLUSIVE)")
+    print("DEMO 3: Agent Overlap Analysis")
     print("=" * 60)
 
     # Create template with overlapping agents (same ID as sender and receiver)
-    template = TraversalInformationTemplate(
+    template = CpmBundleTemplate(
         prefixes={'cpm': 'http://provcpm.org/', 'ex': 'http://example.org/'},
         bundle_name='ex:bundle1',
         main_activity=MainActivityTemplate(id='ex:mainActivity'),
@@ -169,7 +169,7 @@ def demo_agent_overlap_analysis():
 def demo_validation():
     """Demonstrate validation (Python-exclusive features)"""
     print("\n" + "=" * 60)
-    print("DEMO 4: Enhanced Validation (Python-EXCLUSIVE)")
+    print("DEMO 4: Enhanced Validation")
     print("=" * 60)
 
     # Test basic validation (always works)
@@ -205,25 +205,87 @@ def demo_validation():
 
 
 def demo_full_pipeline():
-    """Demonstrate complete processing pipeline (Python-exclusive)"""
+    """Demonstrate complete processing pipeline"""
     print("\n" + "=" * 60)
-    print("DEMO 5: Complete Processing Pipeline (Python-EXCLUSIVE)")
+    print("DEMO 5: Complete Processing Pipeline")
     print("=" * 60)
 
-    # Simulate EMBRC-format data
+    # Representative EMBRC-style JSON-LD payload based on the real example datasets
     embrc_data = {
-        'bundleName': 'ex:embrcBundle',
-        'mainActivity': {
-            'id': 'ex:mainActivity',
-            'startTime': '2024-01-01T10:00:00',
-            'endTime': '2024-01-01T11:00:00'
+        '@context': {
+            '@vocab': 'https://schema.org',
+            'sosa': 'http://www.w3.org/ns/sosa/',
+            'dct': 'http://purl.org/dc/terms/',
+            'prov': 'http://www.w3.org/ns/prov#',
+            'dcat': 'http://www.w3.org/ns/dcat#'
         },
-        'prefixes': {'ex': 'http://example.org/'}
+        '@id': 'embrc:flowcamBundle',
+        '@graph': [
+            {
+                '@type': [
+                    'Action',
+                    'prov:Activity'
+                ],
+                '@id': '_:MaterialProcessing',
+                'dct:type': 'Material Processing; FlowCam imaging',
+                'startTime': '2021-01-01',
+                'endTime': '2021-01-01',
+                'prov:wasAssociatedWith': [
+                    {'@id': 'https://orcid.org/0000-0001-0001-0002'},
+                    {'@id': '_:DNATechnicianPerson'}
+                ],
+                'prov:qualifiedAssociation': [
+                    {
+                        '@type': 'prov:Association',
+                        'prov:agent': {'@id': 'https://orcid.org/0000-0001-0001-0002'},
+                        'dcat:hadRole': 'providing agent'
+                    },
+                    {
+                        '@type': 'prov:Association',
+                        'prov:agent': {'@id': '_:DNATechnicianPerson'},
+                        'dcat:hadRole': 'receiving agent'
+                    }
+                ],
+                'prov:used': [
+                    {'@id': '_:StoredSampleCon_r1'},
+                    {'@id': '_:FlowCam_seawater_sop'}
+                ],
+                'prov:generated': {'@id': '_:ProcessedSampleCon'}
+            },
+            {
+                '@type': [
+                    'Thing',
+                    'prov:Entity',
+                    'sosa:Sample'
+                ],
+                '@id': '_:StoredSampleCon_r1',
+                'name': 'StoredSampleCon_r1',
+                'prov:wasDerivedFrom': {'@id': '_:RawSampleCon'}
+            },
+            {
+                '@type': [
+                    'Thing',
+                    'prov:Entity',
+                    'CreativeWork'
+                ],
+                '@id': '_:FlowCam_seawater_sop',
+                'name': 'FlowCam seawater SOP'
+            },
+            {
+                '@type': [
+                    'Thing',
+                    'prov:Entity',
+                    'sosa:Sample'
+                ],
+                '@id': '_:ProcessedSampleCon',
+                'name': 'ProcessedSampleCon'
+            }
+        ]
     }
 
     # Process through full pipeline
     pipeline = TemplateTransformationPipeline()
-    result = pipeline.full_pipeline(embrc_data, source_format="standard")
+    result = pipeline.full_pipeline(embrc_data, source_format="embrc")
 
     print(f"\n✅ Processing successful: {result['processing_successful']}")
     print(f" Source format: {result['source_format']}")

@@ -13,7 +13,7 @@ import copy
 from src.graph.node import GraphNode
 from src.graph.wrapper import ProvGraphWrapper
 from src.cpm.constants import *
-from src.cpm.template import TraversalInformationTemplate
+from src.cpm.template import CpmBundleTemplate
 from src.cpm.template_mapper import TemplateProvMapper
 from src.cpm.ti_algorithm import TraversalInformationAlgorithm
 from src.cpm.exceptions import *
@@ -357,3 +357,59 @@ class CpmDocumentTraversalMixin:
 
         _traverse_connectors(connector_id, direction)
         return related
+
+    def get_subgraph(self, node_ids: List[Union[str, QualifiedName]],
+                     include_edges: bool = True) -> 'CpmDocument':
+        """
+        Extract a subgraph containing only specified nodes and optionally their edges.
+
+        Args:
+            node_ids: List of node identifiers to include
+            include_edges: Whether to include edges between the nodes
+
+        Returns:
+            A new CpmDocument containing the subgraph
+        """
+        subgraph_doc = self.__class__(ProvDocument())
+        added_nodes = {}
+
+        # Add specified nodes
+        for node_id in node_ids:
+            node = self.get_node(node_id)
+            if node:
+                node_type = node.node_type_name
+
+                # Extract attributes
+                attributes = {}
+                for attr_name, attr_value in node.prov_entity.attributes:
+                    if attr_name != PROV_TYPE:
+                        attributes[str(attr_name)] = attr_value
+
+                prov_types = node.get_prov_attribute(str(PROV_TYPE))
+                prov_type = prov_types[0] if prov_types else None
+
+                try:
+                    added_node = subgraph_doc.add_node(node_type, node.identifier, attributes, prov_type)
+                    added_nodes[str(node.identifier)] = added_node
+                except (AttributeError, TypeError, ValueError, InvalidOperationError, CpmDocumentError):
+                    pass
+
+        # Add edges between included nodes
+        if include_edges:
+            for source_id in node_ids:
+                for target_id in node_ids:
+                    if source_id != target_id:
+                        edges = self.get_edges(source_id, target_id)
+                        for edge in edges:
+                            try:
+                                # Determine edge type and add to subgraph
+                                edge_type = type(edge).__name__.lower()
+                                if 'usage' in edge_type:
+                                    subgraph_doc.add_edge('used', source_id, target_id)
+                                elif 'generation' in edge_type:
+                                    subgraph_doc.add_edge('wasgeneratedby', source_id, target_id)
+                                # Add other edge types as needed
+                            except (AttributeError, TypeError, ValueError, InvalidOperationError, CpmDocumentError, NodeNotFoundError):
+                                pass
+
+        return subgraph_doc

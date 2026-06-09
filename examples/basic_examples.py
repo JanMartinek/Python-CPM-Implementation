@@ -207,7 +207,7 @@ def demonstrate_error_handling():
     
     # Test module imports
     try:
-        from src.cpm.template import TraversalInformationTemplate
+        from src.cpm.template import CpmBundleTemplate
         print("  ✓ CPM Template module available")
     except ImportError:
         print("  ⚠ CPM Template module not available")

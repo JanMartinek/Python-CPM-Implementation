@@ -10,6 +10,7 @@ from src.graph.factory import (
     DividedCpmFactory, MergedCpmFactory, CpmFactoryManager,
     create_node, create_edge, clone_graph, merge_graphs
 )
+from src.cpm.namespaces import CPM_NAMESPACE_URI
 from src.graph.node import GraphNode, DividedGraphNode, MergedGraphNode
 from src.graph.edge import GraphEdge, DividedGraphEdge, MergedGraphEdge
 from src.graph.wrapper import ProvGraphWrapper
@@ -349,6 +350,20 @@ class TestCpmFactoryManager:
         assert cloned_wrapper is not wrapper
         assert len(cloned_wrapper.get_nodes()) == len(wrapper.get_nodes())
         assert len(cloned_wrapper.get_edges()) == len(wrapper.get_edges())
+
+    def test_clone_graph_uses_common_cpm_namespace(self):
+        """Test reconstructed graphs use the configured Common Provenance Model namespace."""
+        doc = ProvDocument()
+        doc.add_namespace('ex', 'http://example.org/')
+        doc.entity('ex:entity1')
+
+        manager = CpmFactoryManager()
+        cloned_wrapper = manager.clone_graph(ProvGraphWrapper(doc), factory_type="DIVIDED")
+        cloned_doc = cloned_wrapper.to_prov_document()
+        cpm_namespace = next((ns for ns in cloned_doc.namespaces if ns.prefix == 'cpm'), None)
+
+        assert cpm_namespace is not None
+        assert str(cpm_namespace.uri) == CPM_NAMESPACE_URI
 
     def test_merge_graphs(self):
         """Test merging multiple graphs"""

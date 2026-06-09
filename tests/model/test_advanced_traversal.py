@@ -6,7 +6,7 @@ Tests the enhanced graph traversal capabilities using the actual CpmDocument imp
 
 from prov.model import ProvDocument
 from src.cpm.constants import CPM_MAIN_ACTIVITY, CPM_FORWARD_CONNECTOR, CPM_BACKWARD_CONNECTOR
-from src.cpm.template import TraversalInformationDeserializer
+from src.cpm.template import CpmBundleDeserializer
 from src.cpm.model import CpmDocument, TemplateProvMapper
 import unittest
 import sys
@@ -47,7 +47,7 @@ class TestAdvancedGraphTraversal(unittest.TestCase):
             ]
         }
 
-        template = TraversalInformationDeserializer.from_json(self.template_data)
+        template = CpmBundleDeserializer.from_json(self.template_data)
         self.cpm_doc = CpmDocument.from_template(template)
 
     def test_get_main_activity(self):

@@ -176,6 +176,21 @@ class TestGraphNode:
         assert cloned_node.identifier == node.identifier
         assert cloned_node.kind == node.kind
 
+    def test_handle_duplicate_merges_attributes(self):
+        """Test duplicate node handling merges previously missing PROV attributes."""
+        doc = ProvDocument()
+        doc.add_namespace('ex', 'http://example.org/')
+        entity = doc.entity('ex:entity1', {'ex:attr1': 'value1'})
+
+        duplicate_doc = ProvDocument()
+        duplicate_doc.add_namespace('ex', 'http://example.org/')
+        duplicate = duplicate_doc.entity('ex:entity1', {'ex:attr2': 'value2'})
+
+        node = GraphNode(entity)
+        node.handle_duplicate(duplicate)
+
+        assert 'value2' in node.get_prov_attribute('ex:attr2')
+
     def test_node_get_edges_by_relation_type(self):
         """Test getting edges by relation type"""
         doc = ProvDocument()

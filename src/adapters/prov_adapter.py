@@ -1,10 +1,18 @@
+import logging
 from typing import Optional, List, Dict, Any
 import networkx as nx
-from prov.model import ProvDocument, ProvEntity, ProvActivity, ProvBundle
-from prov.identifier import QualifiedName
+from prov.model import ProvDocument
 from ..graph.wrapper import ProvGraphWrapper
 from ..graph.node import GraphNode
-from ..graph.edge import GraphEdge
+from ..cpm.namespaces import (
+    EXAMPLE_NAMESPACE_PREFIX,
+    EXAMPLE_NAMESPACE_URI,
+    ensure_namespace,
+    get_namespace_by_prefix,
+)
+
+
+LOGGER = logging.getLogger(__name__)
 
 
 class ProvAdapter:
@@ -24,7 +32,7 @@ class ProvAdapter:
     def create_simple_graph(self, entities: List[str], activities: List[tuple]) -> ProvGraphWrapper:
         doc = ProvDocument()
 
-        doc.add_namespace('ex', 'http://example.org/')
+        ensure_namespace(doc, EXAMPLE_NAMESPACE_PREFIX, EXAMPLE_NAMESPACE_URI)
 
         entity_objects = {}
         for entity_id in entities:
@@ -44,16 +52,11 @@ class ProvAdapter:
 
     def add_entity_to_graph(self, graph: ProvGraphWrapper, entity_id: str,
                             attributes: Optional[Dict[str, Any]] = None) -> GraphNode:
-        if not any(ns.prefix == 'ex' for ns in graph._prov_document.namespaces):
-            graph._prov_document.add_namespace('ex', 'http://example.org/')
+        ensure_namespace(graph._prov_document, EXAMPLE_NAMESPACE_PREFIX, EXAMPLE_NAMESPACE_URI)
+        example_ns = get_namespace_by_prefix(graph._prov_document, EXAMPLE_NAMESPACE_PREFIX)
 
         if ':' not in entity_id:
-            for ns in graph._prov_document.namespaces:
-                if ns.prefix == 'ex':
-                    qualified_id = ns[entity_id]
-                    break
-            else:
-                qualified_id = f'ex:{entity_id}'
+            qualified_id = example_ns[entity_id] if example_ns else f'{EXAMPLE_NAMESPACE_PREFIX}:{entity_id}'
         else:
             qualified_id = entity_id
 
@@ -71,7 +74,8 @@ class ProvAdapter:
                         attr_qname = graph._prov_document.valid_qualified_name(attr_name)
                         if attr_qname:
                             attr_list.append((attr_qname, attr_value))
-                    except Exception:
+                    except (AttributeError, TypeError, ValueError) as exc:
+                        LOGGER.debug("Skipping invalid attribute %s: %s", attr_name, exc)
                         continue
 
         entity = graph._prov_document.entity(qualified_id, other_attributes=attr_list)
@@ -125,7 +129,7 @@ class ProvAdapter:
         for format_name in formats:
             try:
                 results[format_name] = doc.serialize(format=format_name)
-            except Exception as e:
+            except (AttributeError, TypeError, ValueError, NotImplementedError) as e:
                 results[format_name] = f"Error serializing to {format_name}: {str(e)}"
 
         return results

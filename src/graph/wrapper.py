@@ -1,3 +1,4 @@
+import logging
 from typing import Dict, List, Optional, Set, Union, Tuple
 import networkx as nx
 from prov.model import (
@@ -12,14 +13,19 @@ from .node import GraphNode
 from .edge import GraphEdge
 
 
+LOGGER = logging.getLogger(__name__)
+
+
 class ProvGraphWrapper:
     """
-    A wrapper that represents PROV data as a graph following PROV-DM specification:
-    - ProvEntity, ProvActivity, ProvAgent objects become NODES (vertices)
-    - All PROV relations (Generation, Usage, Derivation, etc.) become EDGES
+    Graph-oriented facade over a PROV document.
+
+    The wrapper exposes PROV entities, activities, and agents as graph nodes,
+    while PROV relations are represented as directed edges between those nodes.
     """
 
     def __init__(self, prov_document: Optional[ProvDocument] = None):
+        """Create a graph view over an existing PROV document or an empty one."""
         self.graph = nx.DiGraph()
         self._nodes: Dict[str, GraphNode] = {}
         self._edges: Dict[str, GraphEdge] = {}
@@ -70,9 +76,11 @@ class ProvGraphWrapper:
         return node
 
     def add_entity_as_node(self, entity: ProvEntity) -> GraphNode:
+        """Add a PROV entity record as a graph node."""
         return self._add_record_as_node(entity, "entity")
 
     def add_agent_as_node(self, agent: ProvAgent) -> GraphNode:
+        """Add a PROV agent record as a graph node."""
         return self._add_record_as_node(agent, "agent")
 
     def add_activity_as_node(self, activity: ProvActivity) -> GraphNode:
@@ -223,31 +231,39 @@ class ProvGraphWrapper:
         return node
 
     def get_nodes(self) -> List[GraphNode]:
+        """Return all graph nodes currently tracked by the wrapper."""
         return list(self._nodes.values())
 
     def get_edges(self) -> List[GraphEdge]:
+        """Return all graph edges currently tracked by the wrapper."""
         return list(self._edges.values())
 
     def get_node_by_id(self, node_id: str) -> Optional[GraphNode]:
+        """Look up a node by its graph identifier."""
         return self._nodes.get(node_id)
 
     def get_edge_by_id(self, edge_id: str) -> Optional[GraphEdge]:
+        """Look up an edge by its graph identifier."""
         return self._edges.get(edge_id)
 
     def get_networkx_graph(self) -> nx.DiGraph:
+        """Expose the underlying NetworkX directed graph."""
         return self.graph
 
     def get_neighbors(self, node_id: str) -> List[str]:
+        """Return outgoing neighbor identifiers for a given node."""
         if node_id in self.graph:
             return list(self.graph.neighbors(node_id))
         return []
 
     def get_predecessors(self, node_id: str) -> List[str]:
+        """Return predecessor identifiers for a given node."""
         if node_id in self.graph:
             return list(self.graph.predecessors(node_id))
         return []
 
     def get_successors(self, node_id: str) -> List[str]:
+        """Return successor identifiers for a given node."""
         if node_id in self.graph:
             return list(self.graph.successors(node_id))
         return []
@@ -256,6 +272,7 @@ class ProvGraphWrapper:
                   show_labels: bool = True,
                   node_size: int = 1000,
                   font_size: int = 10):
+        """Render the graph with matplotlib or save it to an image file."""
         try:
             import matplotlib.pyplot as plt
 
@@ -278,19 +295,20 @@ class ProvGraphWrapper:
 
                 nx.draw_networkx_labels(self.graph, pos, labels, font_size=font_size)
 
-            plt.title("Provenance Graph (Entities as Nodes, Activities as Edges)")
+            plt.title("Provenance Graph")
             plt.axis('off')
 
             if filename:
                 plt.savefig(filename, dpi=300, bbox_inches='tight')
-                print(f"Graph saved to {filename}")
+                LOGGER.info("Graph saved to %s", filename)
             else:
                 plt.show()
 
         except ImportError:
-            print("matplotlib not available for visualization")
+            LOGGER.warning("matplotlib not available for visualization")
 
     def to_prov_document(self) -> ProvDocument:
+        """Serialize the current graph view back into a PROV document."""
         if self._prov_document and hasattr(self._prov_document, 'bundles') and self._prov_document.bundles:
             doc = ProvDocument()
 
@@ -312,6 +330,10 @@ class ProvGraphWrapper:
             return doc
         else:
             doc = ProvDocument()
+
+            if hasattr(self._prov_document, 'namespaces'):
+                for ns in self._prov_document.namespaces:
+                    doc.add_namespace(ns.prefix, ns.uri)
 
             for node in self._nodes.values():
                 doc.add_record(node.prov_entity)
@@ -373,6 +395,7 @@ class ProvGraphWrapper:
         return ProvGraphWrapper(new_doc)
 
     def clear(self):
+        """Remove all nodes and edges from the wrapper."""
         self.graph.clear()
         self._nodes.clear()
         self._edges.clear()

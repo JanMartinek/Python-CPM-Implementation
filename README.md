@@ -1,6 +1,6 @@
-# Chain Provenance Model (CPM) - Python Implementation
+# Common Provenance Model (CPM) - Python Implementation
 
-A Python implementation of the **Chain Provenance Model (CPM)**, a structured provenance model built on W3C PROV-DM for representing complex provenance chains with traversal information, connectors, and domain-specific components.
+A Python implementation of the **Common Provenance Model (CPM)**, a structured provenance model built on W3C PROV-DM for representing complex provenance chains with traversal information, connectors, and domain-specific components.
 
 ## Overview
 
@@ -15,23 +15,25 @@ This project implements the CPM specification, providing:
 ## Features
 
 - **CPM Document Management**: Create, modify, and analyze CPM-compliant PROV documents
-- **Template Processing**: Serialize/deserialize CPM templates (JSON, EMBRC, JSON-LD formats)
+- **Template Processing**: Serialize/deserialize CPM templates and transform JSON-LD inputs used in EMBRC datasets
 - **Traversal Information (TI)**: Automatic separation of TI and domain-specific (DS) components
 - **Graph Wrapper**: Intuitive node-edge representation of PROV documents
-- **Comprehensive Validation**: 740 passing tests ensuring complete functionality
+- **Comprehensive Validation**: 747 passing tests ensuring complete functionality
 
 ## Installation
 
 ```bash
 # Clone the repository
-git clone <repository-url>
-cd python-implementation-of-the-cpm
+git clone https://github.com/JanMartinek/Python-CPM-Implementation
+
+# Enter the project directory
+cd Python-CPM-Implementation
 
 # Install dependencies
 pip install -r requirements.txt
 
-# Install the package in development mode
-pip install -e .
+# Alternatively, install the package with development extras used by the full test suite
+pip install -e ".[dev]"
 ```
 
 ## Requirements
@@ -45,7 +47,7 @@ pip install -e .
 **Optional dependencies:**
 
 - matplotlib >= 3.3.0 (for graph visualization)
-- lxml >= 4.6.0 (for XML/RDF processing)
+- lxml >= 4.6.0 (for XML/RDF processing and the full test suite)
 - jsonschema >= 4.0.0 (for JSON schema validation)
 
 ## Quick Start
@@ -54,7 +56,7 @@ pip install -e .
 
 ```python
 from prov.model import ProvDocument
-from src.cpm.model import CpmDocument
+from cpm.model import CpmDocument
 
 # Create a basic PROV document
 doc = ProvDocument()
@@ -64,10 +66,12 @@ doc.add_namespace('ex', 'http://example.org/')
 cpm_doc = CpmDocument(doc)
 
 # Add nodes
-main_activity = cpm_doc.add_node('activity', 'ex:process', {
-    'prov:type': 'cpm:MainActivity',
-    'prov:label': 'Main Processing Activity'
-})
+main_activity = cpm_doc.add_node(
+    'activity',
+    'ex:process',
+    {'prov:label': 'Main Processing Activity'},
+    prov_type='cpm:MainActivity',
+)
 
 input_entity = cpm_doc.add_node('entity', 'ex:input')
 output_entity = cpm_doc.add_node('entity', 'ex:output')
@@ -84,11 +88,11 @@ print(f"Total edges: {cpm_doc.get_statistics()['total_edges']}")
 ### Using the Template System
 
 ```python
-from src.cpm.template import TraversalInformationTemplate, MainActivityTemplate
-from src.cpm.template_mapper import TemplateProvMapper
+from cpm.template import CpmBundleTemplate, MainActivityTemplate
+from cpm.template_mapper import TemplateProvMapper
 
 # Create a template
-template = TraversalInformationTemplate(
+template = CpmBundleTemplate(
     bundle_name='ex:workflow',
     main_activity=MainActivityTemplate(
         id='ex:mainProcess'
@@ -110,7 +114,7 @@ assert cpm_doc.get_main_activity() is not None
 ### Builder Pattern for Complex Documents
 
 ```python
-from src.cpm.builder import CpmDocumentBuilder
+from cpm.builder import CpmDocumentBuilder
 
 # Use fluent API
 cpm_doc = (CpmDocumentBuilder("ex:etl_bundle")
@@ -179,11 +183,11 @@ src/
 4. **Template System**
    - JSON-based declarative document definition
    - Bidirectional conversion (Template ↔ PROV)
-   - Multiple format support (CPM, EMBRC, JSON-LD)
+   - Multiple input representations (CPM JSON templates, JSON-LD, and domain-specific sources such as EMBRC datasets)
 
 ## Key Concepts
 
-### Chain Provenance Model (CPM)
+### Common Provenance Model (CPM)
 
 CPM extends PROV-DM with structured components:
 
@@ -198,7 +202,7 @@ CPM extends PROV-DM with structured components:
 Automatically identifies and separates TI from DS components:
 
 ```python
-from src.cpm.ti_algorithm import TraversalInformationAlgorithm
+from cpm.ti_algorithm import TraversalInformationAlgorithm
 
 # Check if a PROV element belongs to traversal information
 if TraversalInformationAlgorithm.belongs_to_traversal_information(node.prov_entity):
@@ -231,29 +235,29 @@ cpm_doc.remove_node('ex:data')
 ### Template Operations
 
 ```python
-from src.cpm.template import (
-    TraversalInformationTemplate,
-    TraversalInformationSerializer,
-    TraversalInformationDeserializer
+from cpm.template import (
+    CpmBundleTemplate,
+    CpmBundleSerializer,
+    CpmBundleDeserializer
 )
 
 # Serialize to JSON
-json_str = TraversalInformationSerializer.to_json(template, indent=2)
+json_str = CpmBundleSerializer.to_json(template, indent=2)
 
 # Deserialize from JSON (accepts dict or JSON string)
-template = TraversalInformationDeserializer.from_json(json_data)
+template = CpmBundleDeserializer.from_json(json_data)
 
 # Save to file
-TraversalInformationSerializer.to_file(template, 'workflow.json')
+CpmBundleSerializer.to_file(template, 'workflow.json')
 
 # Load from file
-template = TraversalInformationDeserializer.from_file('workflow.json')
+template = CpmBundleDeserializer.from_file('workflow.json')
 ```
 
 ### Validation
 
 ```python
-from src.cpm.validation import CpmValidator
+from cpm.validation import CpmValidator
 
 # Validate CPM document (accepts a ProvGraphWrapper)
 validator = CpmValidator()
@@ -331,7 +335,7 @@ python examples/usecases/usecase_bbmri_biobank.py
 # Use Case: MOU XML - Load external XML file (same as Java test resources)
 python examples/usecases/usecase_mou_xml.py
 
-# Use Case: EMBRC JSON-LD - Load marine biology provenance data
+# Use Case: EMBRC JSON-LD - Load marine biology provenance data from the EMBRC research infrastructure
 python examples/usecases/usecase_embrc_jsonld.py
 ```
 
@@ -353,7 +357,7 @@ python examples/usecases/usecase_mou_xml.py
 
 #### EMBRC JSON-LD Use Case (`usecase_embrc_jsonld.py`)
 
-Loads Dataset\*\_ProvenanceMetadata.jsonld files:
+Loads `Dataset*_ProvenanceMetadata.jsonld` files from EMBRC research datasets:
 
 ```bash
 python examples/usecases/usecase_embrc_jsonld.py
@@ -380,7 +384,7 @@ The examples demonstrate all major functionality including the new subgraph filt
 
 ## Running Tests
 
-The project includes a comprehensive test suite with **740 passing tests** covering all functionality.
+The project includes a comprehensive test suite with **743 passing tests** covering all functionality.
 
 ### Quick Test Run
 
@@ -403,11 +407,21 @@ python -m pytest tests/ --cov=src --cov-report=html
 ### Using Make
 
 ```bash
-# Run all tests
+# Linux/macOS: run all tests
 make test
 
-# Run with coverage
+# Linux/macOS: run with coverage
 make test-coverage
+
+# Linux/macOS: run all documented examples
+make examples
+```
+
+```powershell
+# Windows PowerShell / Command Prompt: use the bundled batch wrapper
+.\make.bat test
+.\make.bat test-coverage
+.\make.bat examples
 ```
 
 ### Platform-Specific Setup
@@ -430,7 +444,7 @@ python -m pytest tests/ -q
 
 The test suite covers:
 
-**Core CPM Functionality** (740 tests):
+**Core CPM Functionality** (743 tests):
 
 - **Model** (`tests/model/`) — CpmDocument CRUD, analysis, traversal, IO, equality, influence, mutability
   - `test_core.py` — Core mixin: nodes, edges, attributes, bundles (146 tests)
@@ -508,13 +522,13 @@ Main class for CPM document manipulation:
 - `clone()` - Deep copy the document
 - `merge_with(other, conflict_resolution)` - Merge two documents
 
-### TraversalInformationTemplate
+### CpmBundleTemplate
 
 Template data structure:
 
 ```python
 @dataclass
-class TraversalInformationTemplate:
+class CpmBundleTemplate:
     bundle_name: str
     main_activity: MainActivityTemplate
     forward_connectors: List[ConnectorTemplate] = field(default_factory=list)
@@ -608,7 +622,7 @@ python-implementation-of-the-cpm/
 │   │   ├── edge.py              # GraphEdge classes
 │   │   └── factory.py           # Graph factories
 │   └── utils/                    # Utilities
-├── tests/                        # Test suite (740 tests)
+├── tests/                        # Test suite (743 tests)
 │   ├── model/                    # CpmDocument, core, analysis, traversal, IO
 │   ├── graph/                    # GraphNode, GraphEdge, wrapper, factory
 │   ├── template/                 # Template serialization and mapping
@@ -645,7 +659,7 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 
 - **W3C PROV-DM**: https://www.w3.org/TR/prov-dm/
 - **PROV Python Library**: https://github.com/trungdong/prov
-- **Chain Provenance Model**: [CPM specification/documentation]
+- **Common Provenance Model**: [project documentation](docs/README.md)
 
 ## Citation
 
@@ -653,9 +667,9 @@ If you use this implementation in your research, please cite:
 
 ```bibtex
 @software{cpm_python,
-  title={Chain Provenance Model - Python Implementation},
-  author={[Authors]},
+    title={Common Provenance Model (CPM) - Python Implementation},
+    author={{CPM Implementation Team}},
   year={2025},
-  url={[Repository URL]}
+        url={https://github.com/JanMartinek/Python-CPM-Implementation}
 }
 ```

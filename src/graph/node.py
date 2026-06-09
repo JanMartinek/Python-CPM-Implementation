@@ -13,6 +13,21 @@ if TYPE_CHECKING:
     from .edge import GraphEdge
 
 
+def _merge_record_attributes(target_record: ProvRecord, source_record: ProvRecord) -> None:
+    """Merge missing PROV attributes from one record into another."""
+    if not hasattr(target_record, 'attributes') or not hasattr(source_record, 'attributes'):
+        return
+
+    existing_attributes = list(target_record.attributes)
+    missing_attributes = [
+        attribute
+        for attribute in source_record.attributes
+        if attribute not in existing_attributes
+    ]
+    if missing_attributes and hasattr(target_record, 'add_attributes'):
+        target_record.add_attributes(missing_attributes)
+
+
 class GraphNode:
     """
     Represents a node in the provenance graph with enhanced edge management.
@@ -117,9 +132,8 @@ class GraphNode:
         return self.prov_entity
 
     def handle_duplicate(self, duplicate_element: ProvRecord):
-        if hasattr(duplicate_element, 'attributes') and hasattr(self.prov_entity, 'attributes'):
-            # TODO: Merge PROV attributes from duplicate into this node
-            pass
+        _merge_record_attributes(self.prov_entity, duplicate_element)
+        self._cached_attributes = None
 
     def remove_element(self, element: ProvRecord) -> bool:
         if element == self.prov_entity:
@@ -215,8 +229,8 @@ class DividedGraphNode(GraphNode):
         for element in self._elements:
             if (hasattr(element, 'identifier') and hasattr(duplicate_element, 'identifier') and
                     element.identifier == duplicate_element.identifier):
-                if hasattr(duplicate_element, 'attributes') and hasattr(element, 'attributes'):
-                    pass
+                _merge_record_attributes(element, duplicate_element)
+                self._cached_attributes = None
                 return
 
         self.add_element(duplicate_element)
@@ -253,8 +267,8 @@ class MergedGraphNode(GraphNode):
         if (hasattr(self.prov_entity, 'identifier') and
             hasattr(duplicate_element, 'identifier') and
                 self.prov_entity.identifier == duplicate_element.identifier):
-            if hasattr(duplicate_element, 'attributes') and hasattr(self.prov_entity, 'attributes'):
-                pass
+            _merge_record_attributes(self.prov_entity, duplicate_element)
+            self._cached_attributes = None
 
     def remove_element(self, element: ProvRecord) -> bool:
         return False
